@@ -4,6 +4,31 @@ pragma solidity ^0.6.12;
 
 import "library.sol";
 
+
+contract AggregateUpdater {
+    IOptionPool [] public pools;
+    address public _owner;
+    
+    constructor() public {
+        _owner = msg.sender;
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == _owner, "AggregateUpdater: need owner");
+        _;
+    }
+    
+    function update() external {
+        for (uint i=0;i<pools.length;i++) {
+            pools[i].update();
+        }
+    }
+    
+    function addPool(IOptionPool pool) external onlyOwner {
+        pools.push(pool);
+    }
+}
+
 contract PausablePool is Context{
     /**
      * @dev Emitted when the pause is triggered by `account`.
