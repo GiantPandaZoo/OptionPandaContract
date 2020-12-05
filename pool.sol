@@ -534,15 +534,17 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      */
     function _settlePremium(address account) internal returns(bool) {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
+        // create a memory copy of array
+        IOption [] memory options = _options;
         
         // at any time we find a pooler with 0 collateral, we can mark the previous rounds settled
         // to avoid meaningless round loops below.
         if (accountCollateral == 0) {
-            for (uint i = 0; i < _options.length; i++) {
-                if (_options[i].getRound() > 0) {
+            for (uint i = 0; i < options.length; i++) {
+                if (options[i].getRound() > 0) {
                     // all settled rounds before current round marked settled, which also means
                     // new collateral will make money immediately at current round.
-                    _options[i].setSettledPremiumRound(_options[i].getRound() - 1, account);
+                    options[i].setSettledPremiumRound(options[i].getRound() - 1, account);
                 }
             }
             return true;
@@ -550,28 +552,35 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         
         // at this stage, the account has collaterals
         uint roundsCounter;
-        for (uint i = 0; i < _options.length; i++) {
+        for (uint i = 0; i < options.length; i++) {
             // shift premium from settled rounds with rounds control
-            uint maxRound = _options[i].getRound();
-            for (uint r = _options[i].getSettledPremiumRound(account) + 1; r < maxRound; r++) {
-                uint roundPremium = _options[i].getRoundPremiumShare(r)
+            uint maxRound = options[i].getRound();
+            uint lastSettledRound = options[i].getSettledPremiumRound(account) + 1;
+            
+            for (uint r = options[i].getSettledPremiumRound(account) + 1; r < maxRound; r++) {
+                uint roundPremium = options[i].getRoundPremiumShare(r)
                                             .mul(accountCollateral)
                                             .div(1e18);  // remember to div by 1e18
                     
                 // shift un-distributed premiums to _premiumBalance
                 _premiumBalance[account] = _premiumBalance[account].add(roundPremium);
                 
-                // mark this round premium claimed
-                _options[i].setSettledPremiumRound(r, account);
-                
+                // record last settled round
+                lastSettledRound = r;
+
                 // @dev BLOCK GAS LIMIT PROBLEM
                 // poolers needs to submit multiple transactions to claim ALL premiums in all rounds
                 // due to gas limit.
                 roundsCounter++;
                 if (roundsCounter >= roundLimit) {
+                    // mark this round premium claimed and return.
+                    options[i].setSettledPremiumRound(lastSettledRound, account);
                     return false;
                 }
             }
+            
+            // mark this round premium claimed and proceed.
+            options[i].setSettledPremiumRound(lastSettledRound, account);
         }
         
         return true;
@@ -625,14 +634,17 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         uint roundsCounter;
         uint accountProfits;
         
+        // create a memory copy of array
+        IOption [] memory options = _options;
+        
         // sum all profits from all options
-        for (uint i = 0; i < _options.length; i++) {
+        for (uint i = 0; i < options.length; i++) {
             // sum all profits from all un-claimed rounds
-            uint r = _options[i].popUnclaimedProfitsRound(msg.sender);
+            uint r = options[i].popUnclaimedProfitsRound(msg.sender);
             while (r!= 0) {
-                uint settlePrice = _options[i].getRoundSettlePrice(r);
-                uint strikePrice = _options[i].getRoundStrikePrice(r);
-                uint optionAmount = _options[i].getRoundBalanceOf(r, msg.sender);
+                uint settlePrice = options[i].getRoundSettlePrice(r);
+                uint strikePrice = options[i].getRoundStrikePrice(r);
+                uint optionAmount = options[i].getRoundBalanceOf(r, msg.sender);
                 
                 // accumulate gain in rounds    
                 accountProfits = accountProfits.add(_calcProfits(settlePrice, strikePrice, optionAmount));
@@ -645,7 +657,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 }
                 
                 // pop next round
-                r = _options[i].popUnclaimedProfitsRound(msg.sender);
+                r = options[i].popUnclaimedProfitsRound(msg.sender);
             }
         }
         
