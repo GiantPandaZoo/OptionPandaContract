@@ -234,7 +234,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @dev abstract function for current option supply per slot
      */
-    function _slotSupply(uint etherPrice) internal virtual returns(uint);
+    function _slotSupply(uint etherPrice) internal view virtual returns(uint);
     
     /**
      * @dev abstract function to calculate option gain
@@ -369,16 +369,21 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice update of options, triggered by anyone periodically
      */
     function update() public override {
-        // update call options
-        uint etherPrice = getEtherPrice();
+        uint etherPrice;
 
-        // prevent divide by 0;
-        require(etherPrice > 0, "invalid price");
-
+        // create a memory copy of array
+        IOption [] memory options = _options;
+        
         // settle all options
-        for (uint i = 0;i< _options.length;i++) {
-            if (block.timestamp >= _options[i].expiryDate()) { // expired
-                _settleOption(_options[i], etherPrice);
+        for (uint i = 0;i< options.length;i++) {
+            if (block.timestamp >= options[i].expiryDate()) { // expired
+                // lazy evaluation
+                if (etherPrice == 0) {
+                    etherPrice = getEtherPrice();
+                }
+                _settleOption(options[i], etherPrice);
+            } else { // mark unexpired by clearning 0
+                options[i] = IOption(0);
             }
         }
 
@@ -386,17 +391,19 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         // notice we must settle options before option reset, otherwise
         // we cannot get a correct slot supply due to COLLATERAL WRITE DOWN
         // when multiple options settles at once.
-        uint slotSupply = _slotSupply(etherPrice);
-        for (uint i = 0;i< _options.length;i++) {
-            if (block.timestamp >= _options[i].expiryDate()) {
-                // reset option with new slot supply
-                _options[i].resetOption(etherPrice, slotSupply);
-                
-                // sigma: count newly issued options
-                _sigmaTotalOptions = _sigmaTotalOptions.add(_options[i].totalSupply());
+        if (etherPrice > 0) { // etherPrice non-zero suggests at least one settled option
+            uint slotSupply = _slotSupply(etherPrice);
+            for (uint i = 0;i < options.length;i++) {
+                if (options[i] != IOption(0)) { // we only check expiryDate once, it's expensive.
+                    // reset option with new slot supply
+                    options[i].resetOption(etherPrice, slotSupply);
+
+                    // sigma: count newly issued options
+                    _sigmaTotalOptions = _sigmaTotalOptions.add(options[i].totalSupply());
+                }
             }
         }
-        
+
         // should update sigma while sigma period expired
         if (block.timestamp > _nextSigmaUpdate) {
             updateSigma();
@@ -409,17 +416,20 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function updateSigma() internal {
         // sigma: metrics updates hourly
         if (_sigmaTotalOptions > 0) {
+            uint64 s = sigma;
             // update sigma
             uint rate = _sigmaSoldOptions.mul(100).div(_sigmaTotalOptions);
             
             // sigma range [15, 145]
-            if (rate > 90 && sigma < 145) {
-                sigma += 5;
-                emit SigmaUpdate(sigma, rate);
-            } else if (rate < 50 && sigma > 15) {
-                sigma -= 5;
-                emit SigmaUpdate(sigma, rate);
+            if (rate > 90 && s < 145) {
+                s += 5;
+                emit SigmaUpdate(s, rate);
+            } else if (rate < 50 && s > 15) {
+                s -= 5;
+                emit SigmaUpdate(s, rate);
             }
+            
+            sigma = s;
         }
         
         // clear metrics
@@ -512,7 +522,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         }
         
         // log
-        emit SettleLog(option.name(), strikePrice, settlePrice, totalProfits, totalOptionSold, premiumShare);
+        //emit SettleLog(option.name(), strikePrice, settlePrice, totalProfits, totalOptionSold, premiumShare);
     }
     
     /**
@@ -833,7 +843,7 @@ contract ETHCallOptionPool is OptionPoolBase {
     /**
      * @notice get current new option supply
      */
-    function _slotSupply(uint) internal override returns(uint) {
+    function _slotSupply(uint) internal view override returns(uint) {
         return collateral.mul(utilizationRate)
                             .div(100)
                             .div(_numOptions);
@@ -939,7 +949,7 @@ contract ETHPutOptionPool is OptionPoolBase {
     /**
      * @notice get current new option supply
      */
-    function _slotSupply(uint etherPrice) internal override returns(uint) {
+    function _slotSupply(uint etherPrice) internal view override returns(uint) {
         // reset the contract
         // formula : collateral * utilizationRate / 100 / (etherPrice/ 1 ether)
        return collateral.mul(utilizationRate)

@@ -59,9 +59,9 @@ contract Option is Context, IOption {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (string memory name, uint duration_, address poolContract) public {
-        _name = name;
-        _symbol = name;
+    constructor (string memory name_, uint duration_, address poolContract) public {
+        _name = name_;
+        _symbol = name_;
         _decimals = 18;
 
         // option settings
@@ -73,19 +73,22 @@ contract Option is Context, IOption {
      * @dev only can reset this option if expiryDate has reached
      */
     function resetOption(uint strikePrice_, uint newSupply) external override onlyPool {
-        require(block.timestamp >= rounds[round].expiryDate, "Option: expiry date has not reached.");
+        // create a memory copy of round;
+        uint r = round;
         // record settle price
-        rounds[round].settlePrice = strikePrice_;
+        rounds[r].settlePrice = strikePrice_;
         
         // round changing for each resetting
-        round++;
+        r++;
         
-        // update
-        rounds[round].expiryDate = block.timestamp + _duration;
-        rounds[round].strikePrice = strikePrice_;
-
-        // mint new option supply at new round
-        _mint(_pool, newSupply);
+        // setting new round parameters
+        rounds[r].expiryDate = block.timestamp + _duration;
+        rounds[r].strikePrice = strikePrice_;
+        rounds[r].totalSupply = newSupply;
+        rounds[r].balances[_pool] = newSupply;
+        
+        // set back r to round
+        round = r;
     }
 
     /**
