@@ -757,7 +757,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     }
 
     /**
-     * @dev get the price of ETH
+     * @dev get the price for 1 ETH
      */
     function getEtherPrice() public view returns(uint) {
         (
@@ -840,7 +840,7 @@ contract ETHCallOptionPool is OptionPoolBase {
                                     .mul(1e12)          // mul by 1e12 here to prevent from underflow
                                     .div(strikePrice);
             
-            // calculate ETH gain of this account
+            // calculate ETH gain of this amount
             uint holderETHProfit = weiPercentageGain
                                     .mul(optionAmount)
                                     .div(1e12);         // remember to div by 1e12 previous mul-ed
