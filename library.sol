@@ -2,7 +2,6 @@
 
 pragma solidity ^0.6.12;
 
-
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
  */
@@ -533,61 +532,6 @@ abstract contract CDFDataInterface {
     uint public Amplifier;
     function numDurations() external view virtual returns (uint);
 }
-
-// Uniswap price quote interface
-abstract contract UniswapInterface {
-    address public WETH;
-
-    function getAmountsIn(uint amountOut, address[] memory path)
-        public
-        view
-        virtual
-        returns (uint[] memory amounts);
-}
-
-// mock of uniswap price up
-contract UniswapMockUp {
-    address public WETH;
-    uint price;
-    uint reftime;
-
-    constructor() public {
-        price = 400000000;
-        reftime = block.timestamp;
-    }
-
-    function getAmountsIn(uint , address[] memory )
-        public
-        view
-        returns (uint[] memory) {
-            uint[] memory amounts = new uint[](2);
-            amounts[0] = price + (block.timestamp - reftime) / 10 * 1000000;
-            return amounts;
-        }
-}
-
-// mock of uniswap price down
-contract UniswapMockDown {
-    address public WETH;
-    uint price;
-    uint reftime;
-
-    constructor() public {
-        price = 800000000;
-        reftime = block.timestamp;
-    }
-
-    function getAmountsIn(uint , address[] memory )
-        public
-        view
-        returns (uint[] memory) {
-            uint[] memory amounts = new uint[](2);
-            amounts[0] = price - (block.timestamp - reftime) / 10 * 1000000;
-            return amounts;
-        }
-}
-
-
 
 interface IOption is IERC20 {
     function resetOption(uint strikePrice_, uint newSupply) external;

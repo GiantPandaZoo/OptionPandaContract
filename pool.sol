@@ -3,6 +3,7 @@
 pragma solidity ^0.6.12;
 
 import "library.sol";
+import "https://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 
 
 contract AggregateUpdater {
@@ -172,7 +173,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     address internal _owner; // owner of this contract
 
     IERC20 immutable public USDTContract; // USDT asset contract address
-    UniswapInterface immutable public uniswapRouter; // Uniswap ETH Price quote
+    AggregatorV3Interface public priceFeed; // chainlink price feed
     CDFDataInterface public cdfDataContract; // cdf data contract;
 
     uint public utilizationRate; // utilization rate of the pool in percent
@@ -239,7 +240,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @dev abstract function to calculate option gain
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal pure virtual returns(uint256 gain);
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view virtual returns(uint256 gain);
     
     /**
      * @dev abstract function to send back option profits
@@ -251,10 +252,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(IERC20 USDTContract_, UniswapInterface uniswapRouter_, CDFDataInterface cdfDataContract_, uint numOptions) public {
+    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, uint numOptions) public {
         _owner = msg.sender;
         USDTContract = USDTContract_;
-        uniswapRouter = uniswapRouter_;
+        priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
         utilizationRate = 50; // default utilization rate is 50
         maxUtilizationRate = 75; // default max utilization rate is 50
@@ -761,11 +762,18 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev get the price of ETH from uniswap
      */
     function getEtherPrice() public view returns(uint) {
-        address[] memory addrs = new address[](2);
-        addrs[0] = address(USDTContract);
-        addrs[1] = uniswapRouter.WETH.address;
-        uint[] memory amounts = uniswapRouter.getAmountsIn((1 ether), addrs);
-        return amounts[0];
+        (
+            uint80 roundID, 
+            int price,
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
+        ) = priceFeed.latestRoundData();
+        
+        if (price > 0) {
+            return uint(price);
+        }
+        return 0;
     }
 }
 
@@ -775,10 +783,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
 contract ETHCallOptionPool is OptionPoolBase {
     /**
      * @param USDTContract Tether USDT contract address
-     * @param uniswapRouter Uniswap contract for getting Ether price
+     * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract, UniswapInterface uniswapRouter, CDFDataInterface cdfContract, uint numOptions)
-        OptionPoolBase(USDTContract, uniswapRouter, cdfContract, numOptions)
+    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+        OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { }
 
     /**
@@ -826,7 +834,7 @@ contract ETHCallOptionPool is OptionPoolBase {
     /**
      * @dev function to calculate option gain
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal pure override returns(uint256 gain) {
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
         // call options get profits due to price rising.
         if (settlePrice > strikePrice) { 
             // calculate unit gain
@@ -868,10 +876,10 @@ contract ETHCallOptionPool is OptionPoolBase {
 contract ETHPutOptionPool is OptionPoolBase {
     /**
      * @param USDTContract Tether USDT contract address
-     * @param uniswapRouter Uniswap contract for getting Ether price
+     * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract, UniswapInterface uniswapRouter, CDFDataInterface cdfContract, uint numOptions)
-        OptionPoolBase(USDTContract, uniswapRouter, cdfContract, numOptions)
+    constructor(IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+        OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { }
 
     /**
@@ -920,8 +928,8 @@ contract ETHPutOptionPool is OptionPoolBase {
             total = total.add(_options[i].totalSupply() * _options[i].strikePrice());
         }
         
-        // @dev remember to div with ETH price unit (1 ether)
-        total /= (1 ether);
+        // @dev remember to div with ETH price unit
+        total = total.div(10**uint(priceFeed.decimals()));
         
         return total;
     }
@@ -936,7 +944,7 @@ contract ETHPutOptionPool is OptionPoolBase {
     /**
      * @dev function to calculate option gain
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal pure override returns(uint256 gain) {
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
         if (settlePrice < strikePrice) {  // put option get profits at this round
             // calculate unit percentage gain
             uint weiPercentageGain = strikePrice.sub(settlePrice)
@@ -951,9 +959,9 @@ contract ETHPutOptionPool is OptionPoolBase {
             // convert to USDT gain
             uint holderUSDTProfit = holderETHProfit
                                     .mul(strikePrice)
-                                    .div(1 ether)   // remember to div ETH price unit (1 ether)
-                                    .div(1e12);     // remember to div 1e12 previous multipied
-                                    
+                                    .div(1e12)                              // remember to div 1e12 previous multipied
+                                    .div(10** uint(priceFeed.decimals()));  // remember to div ETH price unit (1 ether)
+
             return holderUSDTProfit;
         }
     }
@@ -963,9 +971,9 @@ contract ETHPutOptionPool is OptionPoolBase {
      */
     function _slotSupply(uint etherPrice) internal view override returns(uint) {
         // reset the contract
-        // formula : collateral * utilizationRate / 100 / (etherPrice/ 1 ether)
+        // formula : collateral * utilizationRate / 100 / (etherPrice/ price unit)
        return collateral.mul(utilizationRate)
-                            .mul(1 ether)
+                            .mul(10**uint(priceFeed.decimals()))
                             .div(100)
                             .div(_numOptions)
                             .div(etherPrice);
