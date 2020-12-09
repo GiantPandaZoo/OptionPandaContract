@@ -3,8 +3,6 @@
 pragma solidity ^0.6.12;
 
 import "library.sol";
-import "https://github.com/smartcontractkit/chainlink/blob/master/evm-contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-
 
 contract AggregateUpdater {
     IOptionPool [] public pools;
@@ -759,7 +757,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     }
 
     /**
-     * @dev get the price of ETH from uniswap
+     * @dev get the price of ETH
      */
     function getEtherPrice() public view returns(uint) {
         (
@@ -771,7 +769,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         ) = priceFeed.latestRoundData();
         
         if (price > 0) { // convert to USDT decimal
-            return uint(price).mul(1e6).div(priceFeed.decimals());
+            return uint(price).mul(1e6).div(10**uint(priceFeed.decimals()));
         }
         return 0;
     }
@@ -928,9 +926,8 @@ contract ETHPutOptionPool is OptionPoolBase {
             total = total.add(_options[i].totalSupply() * _options[i].strikePrice());
         }
         
-        // @dev remember to div with ETH price unit
-        total = total.div(1 ether);
-        
+        // @dev remember to div with ETH price unit (1 ether)
+        total /= (1 ether);        
         return total;
     }
 
