@@ -770,8 +770,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
         
-        if (price > 0) {
-            return uint(price);
+        if (price > 0) { // convert to USDT decimal
+            return uint(price).mul(1e6).div(priceFeed.decimals());
         }
         return 0;
     }
@@ -929,7 +929,7 @@ contract ETHPutOptionPool is OptionPoolBase {
         }
         
         // @dev remember to div with ETH price unit
-        total = total.div(10**uint(priceFeed.decimals()));
+        total = total.div(1 ether);
         
         return total;
     }
@@ -960,7 +960,7 @@ contract ETHPutOptionPool is OptionPoolBase {
             uint holderUSDTProfit = holderETHProfit
                                     .mul(strikePrice)
                                     .div(1e12)                              // remember to div 1e12 previous multipied
-                                    .div(10** uint(priceFeed.decimals()));  // remember to div ETH price unit
+                                    .div(1 ether);                          // remember to div ETH price unit (1 ether)
 
             return holderUSDTProfit;
         }
@@ -973,7 +973,7 @@ contract ETHPutOptionPool is OptionPoolBase {
         // reset the contract
         // formula : collateral * utilizationRate / 100 / (etherPrice/ price unit)
        return collateral.mul(utilizationRate)
-                            .mul(10**uint(priceFeed.decimals()))
+                            .mul(1 ether)
                             .div(100)
                             .div(_numOptions)
                             .div(etherPrice);
