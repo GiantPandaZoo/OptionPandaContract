@@ -188,7 +188,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     bool poolerTokenOnce;
     
     // round limit
-    uint public roundLimit;
+    uint internal _roundLimit;
     
     // number of options
     uint immutable internal _numOptions;
@@ -258,7 +258,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         utilizationRate = 50; // default utilization rate is 50
         maxUtilizationRate = 75; // default max utilization rate is 50
         _nextSigmaUpdate = block.timestamp + 3600;
-        roundLimit = 1000;
+        _roundLimit = 1000;
         sigma = 70;
         _numOptions = numOptions;
     }
@@ -467,8 +467,15 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice poolers claim premium USDTs;
      */
     function claimPremium() external override whenPoolerNotPaused {
+        claimPremiumForRounds(_roundLimit);
+    }
+    
+    /**
+     * @notice poolers claim premium USDTs for num rounds.
+     */
+    function claimPremiumForRounds(uint numRounds) public override whenPoolerNotPaused {
         // settle un-distributed premiums in rounds to _premiumBalance;
-        _settlePremium(msg.sender);
+        _settlePremium(msg.sender, numRounds);
         
         // send USDTs premium back to senders's address
         uint amountUSDTPremium = _premiumBalance[msg.sender];
@@ -484,7 +491,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice settle premium in rounds while pooler token tranfsers.
      */
     function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract returns(bool) {
-        return _settlePremium(account);
+        return _settlePremium(account, _roundLimit);
     }
     
     /**
@@ -531,7 +538,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * 
      * @return false means the rounds has terminated due to gas limit
      */
-    function _settlePremium(address account) internal returns(bool) {
+    function _settlePremium(address account, uint numRounds) internal returns(bool) {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         // create a memory copy of array
         IOption [] memory options = _options;
@@ -571,7 +578,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 // poolers needs to submit multiple transactions to claim ALL premiums in all rounds
                 // due to gas limit.
                 roundsCounter++;
-                if (roundsCounter >= roundLimit) {
+                if (roundsCounter >= numRounds) {
                     // mark this round premium claimed and return.
                     options[i].setSettledPremiumRound(lastSettledRound, account);
                     return false;
@@ -626,10 +633,18 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         return premium + _premiumBalance[account];
     }
     
+
     /**
      * @notice buyers claim all option profits
      */
     function claimProfits() external override whenBuyerNotPaused {
+        claimProfitsForRounds(_roundLimit);
+    }
+     
+    /**
+     * @notice buyers claim option profits for N rounds
+     */   
+    function claimProfitsForRounds(uint numRounds) public override whenBuyerNotPaused {
         uint roundsCounter;
         uint accountProfits;
         
@@ -651,7 +666,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 // @dev break for BLOCK GAS LIMIT
                 // poolers needs to submit multiple transactions to claim profits in all rounds.
                 roundsCounter++;
-                if (roundsCounter >= roundLimit) {
+                if (roundsCounter >= numRounds) {
                     break;    
                 }
                 
@@ -752,8 +767,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev set round limit to avoid gas exceedes block gasLimit
      */
     function setRoundLimit(uint limit) external override onlyOwner {
-        require(roundLimit > 0, "roundLimit 0");
-        roundLimit = limit;
+        require(limit > 0, "limit 0");
+        _roundLimit = limit;
     }
 
     /**
@@ -761,11 +776,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      */
     function getEtherPrice() public view returns(uint) {
         (
-            uint80 roundID, 
+            ,
             int price,
-            uint startedAt,
-            uint timeStamp,
-            uint80 answeredInRound
+            ,
+            ,
         ) = priceFeed.latestRoundData();
         
         if (price > 0) { // convert to USDT decimal
