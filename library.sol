@@ -626,6 +626,6 @@ interface IOptionPool {
     function setUtilizationRate(uint rate) external;
     function setMaxUtilizationRate(uint maxrate) external;
     function setRoundLimit(uint limit) external;
-
-
+    function getNextExpiryDate() external view returns (uint);
 }
+

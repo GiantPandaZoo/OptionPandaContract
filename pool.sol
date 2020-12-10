@@ -363,6 +363,20 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function currentUtilizationRate() external override view returns (uint256) {
         return _totalPledged().mul(100).div(collateral);
     }
+    
+    /**
+     * @notice get next expiry date for options in this pool
+     */
+    function getNextExpiryDate() external override view returns (uint) {
+        uint nextExpiryDate = uint(-1);
+        
+        for (uint i = 0;i< _options.length;i++) {
+            if (_options[i].expiryDate() < nextExpiryDate) {
+                nextExpiryDate = _options[i].expiryDate();
+            }
+        }
+        return nextExpiryDate;
+    }
 
     /**
      * @notice update of options, triggered by anyone periodically
