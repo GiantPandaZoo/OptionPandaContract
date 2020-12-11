@@ -156,13 +156,27 @@ contract Option is Context, IOption {
     }
 
     /**
-     * @dev pop highest claimed profits round for account
+     * @dev pop unclaimed profits round for account
+     * @notice current round is unsettled, so we only return settled rounds
      */
-    function popUnclaimedProfitsRound(address account) external override onlyPool returns (uint r){
+    function popUnclaimedProfitsRound(address account) external override onlyPool returns (uint r) {
         if (unclaimedRounds[account].length != 0) {
             uint lastIndex = unclaimedRounds[account].length - 1;
             r = unclaimedRounds[account][lastIndex];
-            unclaimedRounds[account].pop();
+            
+            // check if r is the current round
+            if (r == round) {
+                if (lastIndex > 0) {
+                    // swap the last 2 elements
+                    (unclaimedRounds[account][lastIndex-1], unclaimedRounds[account][lastIndex]) = 
+                        (unclaimedRounds[account][lastIndex], unclaimedRounds[account][lastIndex-1]);
+                    
+                    // pop the last element
+                    r = unclaimedRounds[account][lastIndex];
+                    unclaimedRounds[account].pop();
+                    return r;
+                }
+            }
             return r;
         }
         return 0;
@@ -478,8 +492,15 @@ contract Option is Context, IOption {
      */
     function _beforeTokenTransfer(address from, address to, uint256) internal {
         require(block.timestamp < rounds[round].expiryDate, "option expired");
-        _markBuyer(from);
-        _markBuyer(to);
+        
+        // mark holders of this round
+        if (from != address(0)) {
+            _markBuyer(from);
+        }
+        
+        if (to != address(0)) {
+            _markBuyer(to);    
+        }
     }
     
     /**
