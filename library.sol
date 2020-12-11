@@ -628,4 +628,3 @@ interface IOptionPool {
     function setRoundLimit(uint limit) external;
     function getNextExpiryDate() external view returns (uint);
 }
-

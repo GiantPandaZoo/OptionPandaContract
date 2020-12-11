@@ -789,15 +789,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev get the price for 1 ETH
      */
     function getEtherPrice() public view returns(uint) {
-        (
-            ,
-            int price,
-            ,
-            ,
-        ) = priceFeed.latestRoundData();
-        
-        if (price > 0) { // convert to USDT decimal
-            return uint(price).mul(1e6).div(10**uint(priceFeed.decimals()));
+        (, int latestPrice, , , ) = priceFeed.latestRoundData();
+
+        if (latestPrice > 0) { // convert to USDT decimal
+            return uint(latestPrice).mul(1e6).div(10**uint(priceFeed.decimals()));
         }
         return 0;
     }
