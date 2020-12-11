@@ -165,19 +165,24 @@ contract Option is Context, IOption {
             r = unclaimedRounds[account][lastIndex];
             
             // check if r is the current round
-            if (r == round) {
-                if (lastIndex > 0) {
-                    // swap the last 2 elements
-                    (unclaimedRounds[account][lastIndex-1], unclaimedRounds[account][lastIndex]) = 
-                        (unclaimedRounds[account][lastIndex], unclaimedRounds[account][lastIndex-1]);
-                    
-                    // pop the last element
-                    r = unclaimedRounds[account][lastIndex];
-                    unclaimedRounds[account].pop();
-                    return r;
-                }
+            if (r != round) {
+                unclaimedRounds[account].pop();
+                return r;
             }
-            return r;
+            
+            // r == round
+            if (lastIndex > 0) {
+                // swap the last 2 elements
+                (unclaimedRounds[account][lastIndex-1], unclaimedRounds[account][lastIndex]) = 
+                    (unclaimedRounds[account][lastIndex], unclaimedRounds[account][lastIndex-1]);
+                
+                // pop the last element
+                r = unclaimedRounds[account][lastIndex];
+                unclaimedRounds[account].pop();
+                return r;
+            }
+            
+            return 0;
         }
         return 0;
     }
