@@ -477,7 +477,7 @@ contract Option is Context, IOption {
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _beforeTokenTransfer(address from, address to, uint256) internal {
-        require(block.timestamp < rounds[round].expiryDate, "Option: expired, awaiting to be settled");
+        require(block.timestamp < rounds[round].expiryDate, "option expired");
         _markBuyer(from);
         _markBuyer(to);
     }

@@ -979,8 +979,8 @@ contract ETHPutOptionPool is OptionPoolBase {
             // convert to USDT gain
             uint holderUSDTProfit = holderETHProfit
                                     .mul(strikePrice)
-                                    .div(1e12)                              // remember to div 1e12 previous multipied
-                                    .div(1 ether);                          // remember to div ETH price unit (1 ether)
+                                    .div(1e12)      // remember to div 1e12 previous multipied
+                                    .div(1 ether);  // remember to div ETH price unit (1 ether)
 
             return holderUSDTProfit;
         }
