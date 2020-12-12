@@ -647,19 +647,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         return premium + _premiumBalance[account];
     }
     
-
     /**
-     * @notice buyers claim all option profits
-     */
-    function claimProfits() external override whenBuyerNotPaused {
-        claimProfitsForRounds(_roundLimit);
-    }
-     
-    /**
-     * @notice buyers claim option profits for N rounds
+     * @notice buyers claim option profits
      */   
-    function claimProfitsForRounds(uint numRounds) public override whenBuyerNotPaused {
-        uint roundsCounter;
+    function claimProfits() external override whenBuyerNotPaused {
         uint accountProfits;
         
         // create a memory copy of array
@@ -667,26 +658,32 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         
         // sum all profits from all options
         for (uint i = 0; i < options.length; i++) {
+            IOption option = options[i];
+            
+            // get current round 
+            uint currentRound = option.getRound();
+            
             // sum all profits from all un-claimed rounds
-            uint r = options[i].popUnclaimedProfitsRound(msg.sender);
-            while (r!= 0) {
-                uint settlePrice = options[i].getRoundSettlePrice(r);
-                uint strikePrice = options[i].getRoundStrikePrice(r);
-                uint optionAmount = options[i].getRoundBalanceOf(r, msg.sender);
+            uint [] memory rounds  = option.getUnclaimedProfitsRounds(msg.sender);
+            
+            for (uint j = 0; j<rounds.length; j++) {
+                uint round = rounds[j];
+                
+                // remember to exclude the current round(which has not settled)
+                if (round == currentRound) {
+                    continue;
+                }
+                
+                uint settlePrice = option.getRoundSettlePrice(round);
+                uint strikePrice = option.getRoundStrikePrice(round);
+                uint optionAmount = option.getRoundBalanceOf(round, msg.sender);
                 
                 // accumulate gain in rounds    
                 accountProfits = accountProfits.add(_calcProfits(settlePrice, strikePrice, optionAmount));
-
-                // @dev break for BLOCK GAS LIMIT
-                // poolers needs to submit multiple transactions to claim profits in all rounds.
-                roundsCounter++;
-                if (roundsCounter >= numRounds) {
-                    break;    
-                }
-                
-                // pop next round
-                r = options[i].popUnclaimedProfitsRound(msg.sender);
             }
+            
+            // clear claimed rounds
+            option.clearUnclaimedProfitsRounds(msg.sender);
         }
         
         // extra check the amount is not 0;
@@ -712,9 +709,17 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice check profits in an option
      */
     function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount) {
+        // get unsettled round 
+        uint unsettledRound = option.getRound();
+        
         // sum all profits from all un-claimed rounds
         uint [] memory rounds  = option.getUnclaimedProfitsRounds(msg.sender);
         for (uint i=0;i<rounds.length;i++) {
+            // remember to exclude the current unsettled round
+            if (rounds[i] == unsettledRound) {
+                continue;
+            }
+            
             uint settlePrice = option.getRoundSettlePrice(rounds[i]);
             uint strikePrice = option.getRoundStrikePrice(rounds[i]);
             uint optionAmount = option.getRoundBalanceOf(rounds[i], account);
