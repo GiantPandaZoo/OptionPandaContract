@@ -160,7 +160,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     using SafeERC20 for IERC20;
     using SafeERC20 for IOption;
     using SafeMath for uint;
-    using SafeMath for address;
     using Address for address payable;
     
     uint public collateral; // collaterals in this pool
