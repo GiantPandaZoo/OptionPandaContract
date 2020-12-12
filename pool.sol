@@ -193,7 +193,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     // number of options
     uint immutable internal _numOptions;
 
-
     /**
      * @dev Modifier to make a function callable only buy owner
      */
@@ -493,7 +492,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         
         // send USDTs premium back to senders's address
         uint amountUSDTPremium = _premiumBalance[msg.sender];
-        _premiumBalance[msg.sender] = 0; // zero premium blance
+        _premiumBalance[msg.sender] = 0; // zero premium balance
         
         // extra check the amount is not 0;
         if (amountUSDTPremium > 0) {
@@ -593,13 +592,13 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 // due to gas limit.
                 roundsCounter++;
                 if (roundsCounter >= numRounds) {
-                    // mark this round premium claimed and return.
+                    // mark max round premium claimed and return.
                     options[i].setSettledPremiumRound(lastSettledRound, account);
                     return false;
                 }
             }
             
-            // mark this round premium claimed and proceed.
+            // mark max round premium claimed and proceed.
             options[i].setSettledPremiumRound(lastSettledRound, account);
         }
         
