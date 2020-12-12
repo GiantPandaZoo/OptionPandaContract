@@ -572,12 +572,14 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         // at this stage, the account has collaterals
         uint roundsCounter;
         for (uint i = 0; i < options.length; i++) {
+            IOption option = options[i];
+            
             // shift premium from settled rounds with rounds control
-            uint maxRound = options[i].getRound();
-            uint lastSettledRound = options[i].getSettledPremiumRound(account);
+            uint maxRound = option.getRound();
+            uint lastSettledRound = option.getSettledPremiumRound(account);
             
             for (uint r = lastSettledRound + 1; r < maxRound; r++) {
-                uint roundPremium = options[i].getRoundPremiumShare(r)
+                uint roundPremium = option.getRoundPremiumShare(r)
                                             .mul(accountCollateral)
                                             .div(1e18);  // remember to div by 1e18
                     
@@ -593,13 +595,13 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 roundsCounter++;
                 if (roundsCounter >= numRounds) {
                     // mark max round premium claimed and return.
-                    options[i].setSettledPremiumRound(lastSettledRound, account);
+                    option.setSettledPremiumRound(lastSettledRound, account);
                     return false;
                 }
             }
             
             // mark max round premium claimed and proceed.
-            options[i].setSettledPremiumRound(lastSettledRound, account);
+            option.setSettledPremiumRound(lastSettledRound, account);
         }
         
         return true;
