@@ -576,7 +576,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             uint maxRound = options[i].getRound();
             uint lastSettledRound = options[i].getSettledPremiumRound(account);
             
-            for (uint r = options[i].getSettledPremiumRound(account) + 1; r < maxRound; r++) {
+            for (uint r = lastSettledRound + 1; r < maxRound; r++) {
                 uint roundPremium = options[i].getRoundPremiumShare(r)
                                             .mul(accountCollateral)
                                             .div(1e18);  // remember to div by 1e18
