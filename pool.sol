@@ -163,6 +163,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     using Address for address payable;
     
     uint public collateral; // collaterals in this pool
+    uint256 internal constant PREMIUM_SHARE_MULTIPLIER = 1e18;
+    uint256 internal constant USDT_DECIMALS = 1e6;
     
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
 
@@ -196,7 +198,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev Modifier to make a function callable only buy owner
      */
     modifier onlyOwner() {
-        require(msg.sender == _owner, "OptionPoolBase: need owner");
+        require(msg.sender == _owner, "pool: need owner");
         _;
     }
     
@@ -204,14 +206,14 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev Modifier to make a function callable only buy poolerTokenContract
      */
     modifier onlyPoolerTokenContract() {
-        require(msg.sender == address(poolerTokenContract), "OptionPoolBase: need poolerTokenContract");
+        require(msg.sender == address(poolerTokenContract), "pool: need poolerTokenContract");
         _;
     }
 
     /**
      * @dev settle debug log
      */
-    event SettleLog (string name, uint strikePrice, uint etherPrice, uint totalProfit, uint totalOptionSold, uint premiumShare);
+    event SettleLog (string name, uint totalProfit, uint totalOptionSold);
     
     /**
      * @dev sigma update log
@@ -344,7 +346,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function premiumCost(uint amount, IOption optionContract) public override view returns(uint) {
         // notice the CDF is already multiplied by cdfDataContract.Amplifier()
         uint cdf = cdfDataContract.CDF(optionContract.getDuration(), _sigmaToIndex());
-        // note the price is for 1ETH = 1e18
+        // note the price is for 1ETH
         return amount * optionContract.strikePrice() * cdf  / (1 ether) / cdfDataContract.Amplifier();
     }
 
@@ -466,8 +468,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice adjust sigma manually
      */
     function adjustSigma(uint64 newSigma) external override onlyOwner {
-        require (newSigma % 5 == 0, "sigma needs 5*N");
-        require (newSigma >= 15 && newSigma <= 145, "sigma not in range [15,145]");
+        require (newSigma % 5 == 0, "needs 5*N");
+        require (newSigma >= 15 && newSigma <= 145, "out of range [15,145]");
         
         sigma = newSigma;
         
@@ -524,23 +526,26 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         // calculate total gain
         uint totalProfits = _calcProfits(settlePrice, strikePrice, totalOptionSold);
 
-        // substract ethers from collateral
+        // substract collateral
         // buyer's gain is pooler's loss
         collateral = collateral.sub(totalProfits);
 
-        // settle preimum share
-        uint premiumShare;
+        // settle preimum dividends
         if (poolerTokenContract.totalSupply() > 0) {
-            premiumShare = option.totalPremiums()
-                                .mul(1e18)      // mul share with 1e18 to prevent from underflow
+            uint premiumShare = option.totalPremiums()
+                                .mul(PREMIUM_SHARE_MULTIPLIER)      // mul share with PREMIUM_SHARE_MULTIPLIER to prevent from underflow
                                 .div(poolerTokenContract.totalSupply());
                                 
-            // set premium share to round for pooler
+            // set premium share to round for poolers
+            // ASSUMPTION:
+            //  if one pooler's token amount keeps unchanged after settlement, then
+            //      premiumShare * (pooler token) 
+            //  is the share for one pooler.
             option.setRoundPremiumShare(option.getRound(), premiumShare);
         }
         
         // log
-        //emit SettleLog(option.name(), strikePrice, settlePrice, totalProfits, totalOptionSold, premiumShare);
+        emit SettleLog(option.name(), totalProfits, totalOptionSold);
     }
     
     /**
@@ -580,7 +585,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             for (uint r = lastSettledRound + 1; r < maxRound; r++) {
                 uint roundPremium = option.getRoundPremiumShare(r)
                                             .mul(accountCollateral)
-                                            .div(1e18);  // remember to div by 1e18
+                                            .div(PREMIUM_SHARE_MULTIPLIER);  // remember to div by PREMIUM_SHARE_MULTIPLIER
                     
                 // shift un-distributed premiums to _premiumBalance
                 _premiumBalance[account] = _premiumBalance[account].add(roundPremium);
@@ -637,7 +642,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             for (uint r = _options[i].getSettledPremiumRound(account) + 1; r < maxRound; r++) {
                 uint roundPremium = _options[i].getRoundPremiumShare(r)
                                             .mul(accountCollateral)
-                                            .div(1e18);  // remember to div by 1e18
+                                            .div(PREMIUM_SHARE_MULTIPLIER);  // remember to div by PREMIUM_SHARE_MULTIPLIER
                     
                 premium = premium.add(roundPremium);
             }
@@ -801,7 +806,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         (, int latestPrice, , , ) = priceFeed.latestRoundData();
 
         if (latestPrice > 0) { // convert to USDT decimal
-            return uint(latestPrice).mul(1e6).div(10**uint(priceFeed.decimals()));
+            return uint(latestPrice).mul(USDT_DECIMALS).div(10**uint(priceFeed.decimals()));
         }
         return 0;
     }

@@ -154,37 +154,23 @@ contract Option is Context, IOption {
     function getUnclaimedProfitsRounds(address account) external override view returns (uint[] memory) {
         return unclaimedRounds[account];
     }
-
+    
     /**
-     * @dev pop unclaimed profits round for account
-     * @notice current round is unsettled, so we only return settled rounds
+     * @dev clear unclaimed profits round for account
+     * @notice current round excluded
      */
-    function popUnclaimedProfitsRound(address account) external override onlyPool returns (uint r) {
+    function clearUnclaimedProfitsRounds(address account) external override onlyPool {
         if (unclaimedRounds[account].length != 0) {
             uint lastIndex = unclaimedRounds[account].length - 1;
-            r = unclaimedRounds[account][lastIndex];
+            uint r = unclaimedRounds[account][lastIndex];
+            // delete the array
+            delete unclaimedRounds[account];
             
-            // check if r is the current round
-            if (r != round) {
-                unclaimedRounds[account].pop();
-                return r;
+            // keep the unsettled round
+            if (r == round) {
+               unclaimedRounds[account].push(r);
             }
-            
-            // r == round
-            if (lastIndex > 0) {
-                // swap the last 2 elements
-                (unclaimedRounds[account][lastIndex-1], unclaimedRounds[account][lastIndex]) = 
-                    (unclaimedRounds[account][lastIndex], unclaimedRounds[account][lastIndex-1]);
-                
-                // pop the last element
-                r = unclaimedRounds[account][lastIndex];
-                unclaimedRounds[account].pop();
-                return r;
-            }
-            
-            return 0;
         }
-        return 0;
     }
     
     /**
