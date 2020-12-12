@@ -695,20 +695,21 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice check claimable buyer's profits
      */
-    function checkProfits(address account) external override view returns (uint256 profits) {
+    function checkProfits(address account) external override view returns (uint256 profits, uint numRound) {
         // sum all profits from all options
         for (uint i = 0; i < _options.length; i++) {
-            uint optionProfits = checkOptionProfits(_options[i], account);
+            (uint optionProfits, uint optionRounds) = checkOptionProfits(_options[i], account);
             profits = profits.add(optionProfits);
+            numRound = numRound.add(optionRounds);
         }
         
-        return profits;
+        return (profits, numRound);
     }
     
     /**
      * @notice check profits in an option
      */
-    function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount) {
+    function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount, uint numRound) {
         // get unsettled round 
         uint unsettledRound = option.getRound();
         
@@ -726,8 +727,11 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             
             // accumulate gain in rounds    
             amount = amount.add(_calcProfits(settlePrice, strikePrice, optionAmount));
+            
+            // accumulate rounds
+            numRound++;
         }
-        return amount;
+        return (amount, numRound);
     }
 
     /**

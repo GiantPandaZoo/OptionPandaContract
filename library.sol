@@ -619,7 +619,7 @@ interface IOptionPool {
     function NWA() external view returns (uint);
     function checkPremium(address account) external view returns(uint256);
     function claimProfits() external;
-    function checkProfits(address account) external view returns (uint256 profits);
+    function checkProfits(address account) external view returns (uint256 profits, uint numRound);
     function setOption(IOption option) external;
     function setPoolerToken(IPoolerToken poolerToken) external;
     function setUtilizationRate(uint rate) external;
