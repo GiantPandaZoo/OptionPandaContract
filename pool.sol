@@ -446,19 +446,26 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         }
         
         // clear metrics
-        _sigmaTotalOptions = 0;
-        _sigmaSoldOptions = 0;
+        uint sigmaTotalOptions;
+        uint sigmaSoldOptions;
+
+        // create a memory copy of array
+        IOption [] memory options = _options;
         
         // rebuild sold/total metrics
-         for (uint i = 0;i< _options.length;i++) {
+        for (uint i = 0;i< options.length;i++) {
             // sum all issued options and sold options
-            uint supply = _options[i].totalSupply();
-            uint sold = supply.sub(_options[i].balanceOf(address(this)));
+            uint supply = options[i].totalSupply();
+            uint sold = supply.sub(options[i].balanceOf(address(this)));
             
              // sigma: set current metrics
-            _sigmaTotalOptions = _sigmaTotalOptions.add(supply);
-            _sigmaSoldOptions = _sigmaSoldOptions.add(sold);
+            sigmaTotalOptions = sigmaTotalOptions.add(supply);
+            sigmaSoldOptions = sigmaSoldOptions.add(sold);
         }
+        
+        // set back to storage
+        _sigmaTotalOptions = sigmaTotalOptions;
+        _sigmaSoldOptions = sigmaSoldOptions;
         
         // set next update time to one hour later
         _nextSigmaUpdate = block.timestamp + 3600;
@@ -837,7 +844,7 @@ contract ETHCallOptionPool is OptionPoolBase {
     function depositETH() external whenPoolerNotPaused payable {
         require(msg.value > 0, "0 value");
         poolerTokenContract.mint(msg.sender, msg.value);
-        collateral += msg.value;
+        collateral = collateral.add(msg.value);
     }
 
     
@@ -933,7 +940,7 @@ contract ETHPutOptionPool is OptionPoolBase {
         require(amountUSDT > 0, "0 value");
         USDTContract.safeTransferFrom(msg.sender, address(this), amountUSDT);
         poolerTokenContract.mint(msg.sender, amountUSDT);
-        collateral += amountUSDT;
+        collateral = collateral.add(amountUSDT);
     }
     
     /**
@@ -959,7 +966,7 @@ contract ETHPutOptionPool is OptionPoolBase {
         // sum total collateral in USDT
         uint total;
         for (uint i = 0;i< _options.length;i++) {
-            // count collateral at issue time
+            // derive collaterals at issue time
             total = total.add(_options[i].totalSupply() * _options[i].strikePrice());
         }
         
@@ -1005,7 +1012,7 @@ contract ETHPutOptionPool is OptionPoolBase {
      */
     function _slotSupply(uint etherPrice) internal view override returns(uint) {
         // reset the contract
-        // formula : collateral * utilizationRate / 100 / (etherPrice/ price unit)
+        // Formula : (collateral / numOptions) * utilizationRate / 100 / (etherPrice/ price unit)
        return collateral.mul(utilizationRate)
                             .mul(1 ether)
                             .div(100)
