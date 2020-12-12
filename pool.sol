@@ -445,7 +445,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             sigma = s;
         }
         
-        // clear metrics
+        // new metrics
         uint sigmaTotalOptions;
         uint sigmaSoldOptions;
 
@@ -458,12 +458,11 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             uint supply = options[i].totalSupply();
             uint sold = supply.sub(options[i].balanceOf(address(this)));
             
-             // sigma: set current metrics
             sigmaTotalOptions = sigmaTotalOptions.add(supply);
             sigmaSoldOptions = sigmaSoldOptions.add(sold);
         }
         
-        // set back to storage
+        // set back to contract storage
         _sigmaTotalOptions = sigmaTotalOptions;
         _sigmaSoldOptions = sigmaSoldOptions;
         
