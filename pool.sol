@@ -304,10 +304,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         }
         
         // check if option current round is the given round
-        if (optionContract.getRound() != round) {
-            return false;
-        }
-        
+        require (optionContract.getRound() == round, "round mismatch");
+            
         // check remaing options
         require(optionContract.balanceOf(address(this)) >= amount, "soldout");
 
