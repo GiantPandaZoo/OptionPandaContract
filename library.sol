@@ -568,6 +568,7 @@ abstract contract CDFDataInterface {
 interface IOption is IERC20 {
     function resetOption(uint strikePrice_, uint newSupply) external;
     function name() external view returns (string memory);
+    function decimals() external view returns (uint8);
     // previous rounds
     function getRoundTotalSupply(uint r) external view returns(uint256);
     function getRoundExpiryDate(uint r) external view returns(uint);
@@ -624,5 +625,5 @@ interface IOptionPool {
     function setPoolerToken(IPoolerToken poolerToken) external;
     function setUtilizationRate(uint rate) external;
     function setMaxUtilizationRate(uint maxrate) external;
-    function getNextExpiryDate() external view returns (uint);
+    function getNextUpdateTime() external view returns (uint);
 }

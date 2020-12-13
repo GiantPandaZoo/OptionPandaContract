@@ -226,11 +226,11 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev sigma set log
      */
     event SigmaSet(uint sigma);
-    
+
     /**
      * @dev abstract function for current option supply per slot
      */
-    function _slotSupply(uint etherPrice) internal view virtual returns(uint);
+    function _slotSupply(uint assetPrice) internal view virtual returns(uint);
     
     /**
      * @dev abstract function to calculate option gain
@@ -337,8 +337,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function premiumCost(uint amount, IOption optionContract) public override view returns(uint) {
         // notice the CDF is already multiplied by cdfDataContract.Amplifier()
         uint cdf = cdfDataContract.CDF(optionContract.getDuration(), _sigmaToIndex());
-        // note the price is for 1ETH
-        return amount * optionContract.strikePrice() * cdf  / (1 ether) / cdfDataContract.Amplifier();
+        // note the price is for 1exp(decimals)
+        return amount * optionContract.strikePrice() * cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
     }
 
     /**
@@ -356,24 +356,25 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     }
     
     /**
-     * @notice get next expiry date for options in this pool
+     * @notice get next update time
      */
-    function getNextExpiryDate() external override view returns (uint) {
-        uint nextExpiryDate = uint(-1);
+    function getNextUpdateTime() external override view returns (uint) {
+        uint nextUpdateTime =_nextSigmaUpdate;
         
         for (uint i = 0;i< _options.length;i++) {
-            if (_options[i].expiryDate() < nextExpiryDate) {
-                nextExpiryDate = _options[i].expiryDate();
+            if (_options[i].expiryDate() < nextUpdateTime) {
+                nextUpdateTime = _options[i].expiryDate();
             }
         }
-        return nextExpiryDate;
+
+        return nextUpdateTime;
     }
 
     /**
      * @notice update of options, triggered by anyone periodically
      */
     function update() public override {
-        uint etherPrice;
+        uint assetPrice;
 
         // create a memory copy of array
         IOption [] memory options = _options;
@@ -382,10 +383,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         for (uint i = 0;i< options.length;i++) {
             if (block.timestamp >= options[i].expiryDate()) { // expired
                 // lazy evaluation
-                if (etherPrice == 0) {
-                    etherPrice = getEtherPrice();
+                if (assetPrice == 0) {
+                    assetPrice = getAssetPrice();
                 }
-                _settleOption(options[i], etherPrice);
+                _settleOption(options[i], assetPrice);
             } else { // mark unexpired by clearning 0
                 options[i] = IOption(0);
             }
@@ -395,12 +396,12 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         // notice we must settle options before option reset, otherwise
         // we cannot get a correct slot supply due to COLLATERAL WRITE DOWN
         // when multiple options settles at once.
-        if (etherPrice > 0) { // etherPrice non-zero suggests at least one settled option
-            uint slotSupply = _slotSupply(etherPrice);
+        if (assetPrice > 0) { // assetPrice non-zero suggests at least one settled option
+            uint slotSupply = _slotSupply(assetPrice);
             for (uint i = 0;i < options.length;i++) {
                 if (options[i] != IOption(0)) { // we only check expiryDate once, it's expensive.
                     // reset option with new slot supply
-                    options[i].resetOption(etherPrice, slotSupply);
+                    options[i].resetOption(assetPrice, slotSupply);
 
                     // sigma: count newly issued options
                     _sigmaTotalOptions = _sigmaTotalOptions.add(options[i].totalSupply());
@@ -511,11 +512,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         uint totalSupply = option.totalSupply();
         uint strikePrice = option.strikePrice();
         
-        // ignore 0 supply && 0 strikePrice option
-        if (totalSupply == 0 || strikePrice == 0) {
-            return;
-        }
-
         // count total sold options
         uint totalOptionSold = totalSupply.sub(option.balanceOf(address(this)));
         
@@ -790,11 +786,14 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         require(maxrate > utilizationRate, "less than rate");
         maxUtilizationRate = maxrate;
     }
-
+    
+        
     /**
-     * @dev get the price for 1 ETH
+     * @dev get the price for asset with regarding to asset decimals
+     * Example:
+     *  for ETH price oracle, this function returns the USDT price for 1 ETH
      */
-    function getEtherPrice() public view returns(uint) {
+    function getAssetPrice() public view returns(uint) {
         (, int latestPrice, , , ) = priceFeed.latestRoundData();
 
         if (latestPrice > 0) { // convert to USDT decimal
@@ -887,7 +886,7 @@ contract ETHCallOptionPool is OptionPoolBase {
     }
     
     /**
-     * @notice get current new option supply
+     * @dev get current new option supply
      */
     function _slotSupply(uint) internal view override returns(uint) {
         return collateral.mul(utilizationRate)
