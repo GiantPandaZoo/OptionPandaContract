@@ -298,11 +298,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice buy options via USDT, pool receive premium
      */
     function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused returns(bool) {
-        // if the option has expired settle first
-        if (block.timestamp >= optionContract.expiryDate()) { // expired
-            update();
-        }
-        
+        // check option expiry
+        require(block.timestamp < optionContract.expiryDate(), "expired");
         // check if option current round is the given round
         require (optionContract.getRound() == round, "round mismatch");
             
