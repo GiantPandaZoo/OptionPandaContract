@@ -876,14 +876,13 @@ contract ETHCallOptionPool is OptionPoolBase {
     function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
         // call options get profits due to price rising.
         if (settlePrice > strikePrice) { 
-            // calculate unit gain
-            uint weiPercentageGain = settlePrice.sub(strikePrice)
+            // calculate ratio
+            uint ratio = settlePrice.sub(strikePrice)
                                     .mul(1e12)          // mul by 1e12 here to prevent from underflow
                                     .div(strikePrice);
             
             // calculate ETH gain of this amount
-            uint holderETHProfit = weiPercentageGain
-                                    .mul(optionAmount)
+            uint holderETHProfit = ratio.mul(optionAmount)
                                     .div(1e12);         // remember to div by 1e12 previous mul-ed
             
             return holderETHProfit;
@@ -984,19 +983,17 @@ contract ETHPutOptionPool is OptionPoolBase {
      */
     function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
         if (settlePrice < strikePrice) {  // put option get profits at this round
-            // calculate unit percentage gain
-            uint weiPercentageGain = strikePrice.sub(settlePrice)
+            // calculate ratio
+            uint ratio = strikePrice.sub(settlePrice)
                                     .mul(1e12)      // mul 1e12 to prevent from underflow
                                     .div(strikePrice);
 
-            // ETH gain
-            uint holderETHProfit = weiPercentageGain
-                                    .mul(optionAmount);
+            // holder share
+            uint holderShare = ratio.mul(optionAmount);
 
          
             // convert to USDT gain
-            uint holderUSDTProfit = holderETHProfit
-                                    .mul(strikePrice)
+            uint holderUSDTProfit = holderShare.mul(strikePrice)
                                     .div(1e12)      // remember to div 1e12 previous multipied
                                     .div(1 ether);  // remember to div ETH price unit (1 ether)
 
