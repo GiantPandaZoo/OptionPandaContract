@@ -290,8 +290,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice check remaining options for the option contract
      */
-    function optionsLeft(IOption optionContract) external override view returns (uint256){
-        return optionContract.balanceOf(address(this));
+    function optionsLeft(IOption optionContract) external override view returns (uint256 optionsleft, uint round) {
+        return (optionContract.balanceOf(address(this)), optionContract.getRound());
     }
 
     /**
