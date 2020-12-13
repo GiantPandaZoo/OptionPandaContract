@@ -187,10 +187,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     // the token contract of the pooler;
     IPoolerToken public poolerTokenContract;
     bool poolerTokenOnce;
-    
-    // round limit
-    uint internal _roundLimit;
-    
+
     // number of options
     uint immutable internal _numOptions;
 
@@ -258,7 +255,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         utilizationRate = 50; // default utilization rate is 50
         maxUtilizationRate = 75; // default max utilization rate is 50
         _nextSigmaUpdate = block.timestamp + 3600;
-        _roundLimit = 1000;
         sigma = 70;
         _numOptions = numOptions;
     }
@@ -477,12 +473,11 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         emit SigmaSet(sigma);
     }
 
-
     /**
      * @notice poolers claim premium USDTs;
      */
     function claimPremium() external override whenPoolerNotPaused {
-        claimPremiumForRounds(_roundLimit);
+        claimPremiumForRounds(uint(-1));
     }
     
     /**
@@ -505,8 +500,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice settle premium in rounds while pooler token tranfsers.
      */
-    function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract returns(bool) {
-        return _settlePremium(account, _roundLimit);
+    function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
+        _settlePremium(account, uint(-1));
     }
     
     /**
@@ -790,14 +785,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         require(maxrate >=0 && maxrate <= 100, "rate[0,100]");
         require(maxrate > utilizationRate, "less than rate");
         maxUtilizationRate = maxrate;
-    }
-    
-    /**
-     * @dev set round limit to avoid gas exceedes block gasLimit
-     */
-    function setRoundLimit(uint limit) external override onlyOwner {
-        require(limit > 0, "limit 0");
-        _roundLimit = limit;
     }
 
     /**

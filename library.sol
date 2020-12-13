@@ -606,9 +606,9 @@ interface IOptionPool {
     function unpausePooler() external;
     function pauseBuyer() external;
     function unpauseBuyer() external;
-    function settlePremiumByPoolerToken(address account) external returns(bool);
+    function settlePremiumByPoolerToken(address account) external;
     function update() external;
-    function optionsLeft(IOption optionContract) external view returns (uint256);
+    function optionsLeft(IOption optionContract) external view returns (uint256 left, uint round);
     function buy(uint amount, IOption optionContract, uint round) external returns(bool);
     function premiumCost(uint amount, IOption optionContract) external view returns(uint);
     function listOptions() external view returns (IOption []memory);
@@ -624,6 +624,5 @@ interface IOptionPool {
     function setPoolerToken(IPoolerToken poolerToken) external;
     function setUtilizationRate(uint rate) external;
     function setMaxUtilizationRate(uint maxrate) external;
-    function setRoundLimit(uint limit) external;
     function getNextExpiryDate() external view returns (uint);
 }
