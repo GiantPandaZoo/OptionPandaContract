@@ -862,7 +862,7 @@ contract ETHCallOptionPool is OptionPoolBase {
      */
     function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
         // call options get profits due to price rising.
-        if (settlePrice > strikePrice) { 
+        if (settlePrice > strikePrice && strikePrice > 0) { 
             // calculate ratio
             uint ratio = settlePrice.sub(strikePrice)
                                     .mul(1e12)          // mul by 1e12 here to prevent from underflow
@@ -874,8 +874,6 @@ contract ETHCallOptionPool is OptionPoolBase {
             
             return holderETHProfit;
         }
-        
-        return 0;
     }
 
     /**
@@ -969,7 +967,7 @@ contract ETHPutOptionPool is OptionPoolBase {
      * @dev function to calculate option gain
      */
     function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
-        if (settlePrice < strikePrice) {  // put option get profits at this round
+        if (settlePrice < strikePrice && strikePrice > 0) {  // put option get profits at this round
             // calculate ratio
             uint ratio = strikePrice.sub(settlePrice)
                                     .mul(1e12)      // mul 1e12 to prevent from underflow
