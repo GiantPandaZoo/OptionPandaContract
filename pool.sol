@@ -896,20 +896,25 @@ contract ETHCallOptionPool is OptionPoolBase {
 /**
  * @title Implementation of Put Option Pool
  */
-contract ETHPutOptionPool is OptionPoolBase {
+contract PutOptionPool is OptionPoolBase {
+    string private _name;
+    uint private constant ASSET_PRICE_UNIT = 1e18;
+    
     /**
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+    constructor(string memory name_, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
         OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
-        public { }
+        public { 
+            _name = name_;
+        }
 
     /**
      * @dev Returns the pool of the contract.
      */
-    function name() public pure returns (string memory) {
-        return "ETH PUT POOL";
+    function name() public view returns (string memory) {
+        return _name;
     }
 
     /**
@@ -951,8 +956,8 @@ contract ETHPutOptionPool is OptionPoolBase {
             total = total.add(_options[i].totalSupply() * _options[i].strikePrice());
         }
         
-        // @dev remember to div with ETH price unit (1 ether)
-        total /= (1 ether);        
+        // @dev remember to div with asset price unit
+        total /= ASSET_PRICE_UNIT;        
         return total;
     }
 
@@ -979,8 +984,8 @@ contract ETHPutOptionPool is OptionPoolBase {
          
             // convert to USDT gain
             uint holderUSDTProfit = holderShare.mul(strikePrice)
-                                    .div(1e12)      // remember to div 1e12 previous multipied
-                                    .div(1 ether);  // remember to div ETH price unit (1 ether)
+                                    .div(1e12)              // remember to div 1e12 previous multipied
+                                    .div(ASSET_PRICE_UNIT);   // remember to div price unit
 
             return holderUSDTProfit;
         }
@@ -989,13 +994,13 @@ contract ETHPutOptionPool is OptionPoolBase {
     /**
      * @notice get current new option supply
      */
-    function _slotSupply(uint etherPrice) internal view override returns(uint) {
+    function _slotSupply(uint assetPrice) internal view override returns(uint) {
         // reset the contract
-        // Formula : (collateral / numOptions) * utilizationRate / 100 / (etherPrice/ price unit)
+        // Formula : (collateral / numOptions) * utilizationRate / 100 / (assetPrice/ price unit)
        return collateral.mul(utilizationRate)
-                            .mul(1 ether)
+                            .mul(ASSET_PRICE_UNIT)
                             .div(100)
                             .div(_numOptions)
-                            .div(etherPrice);
+                            .div(assetPrice);
     }
 }
