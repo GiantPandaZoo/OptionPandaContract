@@ -59,10 +59,10 @@ contract Option is Context, IOption {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (string memory name_, uint duration_, address poolContract) public {
+    constructor (string memory name_, uint duration_, uint8 decimals_, address poolContract) public {
         _name = name_;
         _symbol = name_;
-        _decimals = 18;
+        _decimals = decimals_;
 
         // option settings
         _duration = duration_; // set duration once
