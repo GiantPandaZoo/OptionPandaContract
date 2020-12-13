@@ -624,28 +624,32 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice poolers sum premium USDTs;
      */
-    function checkPremium(address account) external override view returns(uint256) {
+    function checkPremium(address account) external override view returns(uint256 premium, uint numRound) {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
 
         // if the account has 0 value pooled
         if (accountCollateral == 0) {
-            return 0;
+            return (0, 0);
         }
         
-        uint premium;
+        premium = _premiumBalance[account];
+        
         for (uint i = 0; i < _options.length; i++) {
-            uint maxRound = _options[i].getRound();
-            for (uint r = _options[i].getSettledPremiumRound(account) + 1; r < maxRound; r++) {
-                uint roundPremium = _options[i].getRoundPremiumShare(r)
+            IOption option = _options[i];
+            uint maxRound = option.getRound();
+            
+            for (uint r = option.getSettledPremiumRound(account) + 1; r < maxRound; r++) {
+                uint roundPremium = option.getRoundPremiumShare(r)
                                             .mul(accountCollateral)
                                             .div(PREMIUM_SHARE_MULTIPLIER);  // remember to div by PREMIUM_SHARE_MULTIPLIER
                     
                 premium = premium.add(roundPremium);
+                numRound++;
             }
         }
         
         // add un-distributed premium with _premiumBalance
-        return premium + _premiumBalance[account];
+        return (premium, numRound);
     }
     
     /**
@@ -683,7 +687,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 accountProfits = accountProfits.add(_calcProfits(settlePrice, strikePrice, optionAmount));
             }
             
-            // clear claimed rounds
+            // clear unclaimed rounds(claimed)
             option.clearUnclaimedProfitsRounds(msg.sender);
         }
         

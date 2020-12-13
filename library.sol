@@ -614,11 +614,11 @@ interface IOptionPool {
     function listOptions() external view returns (IOption []memory);
     function currentUtilizationRate() external view returns (uint256);
     function adjustSigma(uint64 newSigma) external;
+    function NWA() external view returns (uint);
     function claimPremium() external;
     function claimPremiumForRounds(uint numRounds) external;
-    function NWA() external view returns (uint);
-    function checkPremium(address account) external view returns(uint256);
     function claimProfits() external;
+    function checkPremium(address account) external view returns (uint256 premium, uint numRound);
     function checkProfits(address account) external view returns (uint256 profits, uint numRound);
     function setOption(IOption option) external;
     function setPoolerToken(IPoolerToken poolerToken) external;
