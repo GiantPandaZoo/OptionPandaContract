@@ -804,7 +804,9 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
 }
 
 /**
- * @title Implementation of Call Option Pool
+ * @title Implementation of ETH Call Option Pool
+ * ETHCallOptionPool Asset Call Option use Ethers as collateral and bets
+ * on Chainlink Oralce Price Feed.
  */
 contract ETHCallOptionPool is OptionPoolBase {
     /**
@@ -830,7 +832,6 @@ contract ETHCallOptionPool is OptionPoolBase {
         poolerTokenContract.mint(msg.sender, msg.value);
         collateral = collateral.add(msg.value);
     }
-
     
     /**
      * @notice withdraw the pooled ethers;
@@ -894,20 +895,121 @@ contract ETHCallOptionPool is OptionPoolBase {
 }
 
 /**
+ * @title Implementation of ERC20 Asset Call Option Pool
+ * ERC20 Asset Call Option use ERC20 asset as collateral and bets
+ * on Chainlink Oralce Price Feed.
+ */
+contract ERC20CallOptionPool is OptionPoolBase {
+    string private _name;
+    IERC20 public AssetContract;
+
+    /**
+     * @param USDTContract Tether USDT contract address
+     * @param priceFeed Chainlink contract for getting Ether price
+     */
+    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+        OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
+        public { 
+             _name = name_;
+             AssetContract = AssetContract_;
+        }
+
+    /**
+     * @dev Returns the pool of the contract.
+     */
+    function name() public view returns (string memory) {
+        return _name;
+    }
+    
+    /**
+     * @notice deposit asset to this pool directly.
+     */
+    function depositAsset(uint256 amount) external whenPoolerNotPaused payable {
+        require(amount > 0, "0 value");
+        AssetContract.safeTransferFrom(msg.sender, address(this), amount);
+        poolerTokenContract.mint(msg.sender, amount);
+        collateral = collateral.add(amount);
+    }
+
+    /**
+     * @notice withdraw the pooled ethers;
+     */
+    function withdrawAsset(uint amount) external whenPoolerNotPaused {
+        require (amount <= poolerTokenContract.balanceOf(msg.sender), "insufficient balance");
+        require (amount <= NWA(), "insufficient collateral");
+
+        // burn pooler token
+        poolerTokenContract.burn(msg.sender, amount);
+        // substract collateral
+        collateral = collateral.sub(amount);
+
+        // transfer asset back to msg.sender
+        AssetContract.safeTransfer(msg.sender, amount);
+    }
+        
+    /**
+     * @notice sum total collaterals pledged
+     */
+    function _totalPledged() internal view override returns (uint amount) {
+        for (uint i = 0;i< _options.length;i++) {
+            amount += _options[i].totalSupply();
+        }
+    }
+
+    /**
+     * @dev send profits back to account
+     */
+    function _sendProfits(address payable account, uint256 amount) internal override {
+        USDTContract.safeTransfer(account, amount);
+    }
+
+    /**
+     * @dev function to calculate option gain
+     */
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
+        // call options get profits due to price rising.
+        if (settlePrice > strikePrice && strikePrice > 0) { 
+            // calculate ratio
+            uint ratio = settlePrice.sub(strikePrice)
+                                    .mul(1e12)          // mul by 1e12 here to prevent from underflow
+                                    .div(strikePrice);
+            
+            // calculate Asset gain of this amount
+            uint holderAssetProfit = ratio.mul(optionAmount)
+                                    .div(1e12);         // remember to div by 1e12 previous mul-ed
+            
+            return holderAssetProfit;
+        }
+    }
+
+    /**
+     * @notice get current new option supply
+     */
+    function _slotSupply(uint) internal view override returns(uint) {
+        return collateral.mul(utilizationRate)
+                            .div(100)
+                            .div(_numOptions);
+    }
+}
+
+/**
  * @title Implementation of Put Option Pool
+ * Put Option requires USDT as collateral and 
+ * bets on Chainlink Oralce Price Feed.
  */
 contract PutOptionPool is OptionPoolBase {
     string private _name;
-    uint private constant ASSET_PRICE_UNIT = 1e18;
+    uint private immutable ASSET_PRICE_UNIT;
     
     /**
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
         OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
             _name = name_;
+            ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);
         }
 
     /**
