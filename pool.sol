@@ -960,7 +960,7 @@ contract ERC20CallOptionPool is OptionPoolBase {
      * @dev send profits back to account
      */
     function _sendProfits(address payable account, uint256 amount) internal override {
-        USDTContract.safeTransfer(account, amount);
+        AssetContract.safeTransfer(account, amount);
     }
 
     /**
