@@ -7,6 +7,11 @@ pragma solidity ^0.6.12;
  */
 interface IERC20 {
     /**
+     * @dev returns the decimal of this ERC20 contract
+     */
+    function decimals() external view returns (uint8);
+    
+    /**
      * @dev Returns the amount of tokens in existence.
      */
     function totalSupply() external view returns (uint256);
@@ -568,7 +573,6 @@ abstract contract CDFDataInterface {
 interface IOption is IERC20 {
     function resetOption(uint strikePrice_, uint newSupply) external;
     function name() external view returns (string memory);
-    function decimals() external view returns (uint8);
     // previous rounds
     function getRoundTotalSupply(uint r) external view returns(uint256);
     function getRoundExpiryDate(uint r) external view returns(uint);

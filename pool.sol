@@ -805,7 +805,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
 
 /**
  * @title Implementation of ETH Call Option Pool
- * ETHCallOptionPool Asset Call Option use Ethers as collateral and bets
+ * ETHCallOptionPool Call Option Pool use Ethers as collateral and bets
  * on Chainlink Oralce Price Feed.
  */
 contract ETHCallOptionPool is OptionPoolBase {
@@ -896,7 +896,7 @@ contract ETHCallOptionPool is OptionPoolBase {
 
 /**
  * @title Implementation of ERC20 Asset Call Option Pool
- * ERC20 Asset Call Option use ERC20 asset as collateral and bets
+ * ERC20 Asset Call Option Pool use ERC20 asset as collateral and bets
  * on Chainlink Oralce Price Feed.
  */
 contract ERC20CallOptionPool is OptionPoolBase {
@@ -994,8 +994,8 @@ contract ERC20CallOptionPool is OptionPoolBase {
 
 /**
  * @title Implementation of Put Option Pool
- * Put Option requires USDT as collateral and 
- * bets on Chainlink Oralce Price Feed.
+ * Put Option Pool requires USDT as collateral and 
+ * bets on Chainlink Oralce Price Feed of one asset.
  */
 contract PutOptionPool is OptionPoolBase {
     string private _name;
