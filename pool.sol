@@ -163,9 +163,14 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     using Address for address payable;
     
     uint public collateral; // collaterals in this pool
+    
     uint256 internal constant PREMIUM_SHARE_MULTIPLIER = 1e18;
     uint256 internal constant USDT_DECIMALS = 1e6;
-    
+    uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
+    uint16 internal constant INITIAL_SIGMA = 70;
+    uint8 internal constant INITIAL_UTILIZATION_RATE = 50;
+    uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
+
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
 
     IOption [] internal _options; // all option contracts
@@ -175,9 +180,9 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     AggregatorV3Interface public priceFeed; // chainlink price feed
     CDFDataInterface public cdfDataContract; // cdf data contract;
 
-    uint public utilizationRate; // utilization rate of the pool in percent
-    uint public maxUtilizationRate; // max utilization rate of the pool in percent
-    uint64 public sigma; // current sigma
+    uint8 public utilizationRate; // utilization rate of the pool in percent
+    uint8 public maxUtilizationRate; // max utilization rate of the pool in percent
+    uint16 public sigma; // current sigma
     
     uint private _sigmaSoldOptions;  // sum total options sold in a period
     uint private _sigmaTotalOptions; // sum total options issued
@@ -252,10 +257,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
-        utilizationRate = 50; // default utilization rate is 50
-        maxUtilizationRate = 75; // default max utilization rate is 50
-        _nextSigmaUpdate = block.timestamp + 3600;
-        sigma = 70;
+        utilizationRate = INITIAL_UTILIZATION_RATE;
+        maxUtilizationRate = INITIAL_MAX_UTILIZATION_RATE;
+        _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
+        sigma = INITIAL_SIGMA;
         _numOptions = numOptions;
     }
 
@@ -337,7 +342,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function premiumCost(uint amount, IOption optionContract) public override view returns(uint) {
         // notice the CDF is already multiplied by cdfDataContract.Amplifier()
         uint cdf = cdfDataContract.CDF(optionContract.getDuration(), _sigmaToIndex());
-        // note the price is for 1exp(decimals)
+        // note the price is for 10 ** option decimals
         return amount * optionContract.strikePrice() * cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
     }
 
@@ -409,7 +414,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             }
         }
 
-        // should update sigma while sigma period expired
+        // should update sigma while sigma period expires
         if (block.timestamp > _nextSigmaUpdate) {
             updateSigma();
         }
@@ -421,7 +426,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function updateSigma() internal {
         // sigma: metrics updates hourly
         if (_sigmaTotalOptions > 0) {
-            uint64 s = sigma;
+            uint16 s = sigma;
             // update sigma
             uint rate = _sigmaSoldOptions.mul(100).div(_sigmaTotalOptions);
             
@@ -459,13 +464,13 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         _sigmaSoldOptions = sigmaSoldOptions;
         
         // set next update time to one hour later
-        _nextSigmaUpdate = block.timestamp + 3600;
+        _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
     }
     
     /**
      * @notice adjust sigma manually
      */
-    function adjustSigma(uint64 newSigma) external override onlyOwner {
+    function adjustSigma(uint16 newSigma) external override onlyOwner {
         require (newSigma % 5 == 0, "needs 5*N");
         require (newSigma >= 15 && newSigma <= 145, "out of range [15,145]");
         
@@ -487,19 +492,17 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     function claimPremiumForRounds(uint numRounds) public override whenPoolerNotPaused {
         // settle un-distributed premiums in rounds to _premiumBalance;
         _settlePremium(msg.sender, numRounds);
-        
-        // send USDTs premium back to senders's address
+
+        // premium balance modification
         uint amountUSDTPremium = _premiumBalance[msg.sender];
         _premiumBalance[msg.sender] = 0; // zero premium balance
         
-        // extra check the amount is not 0;
-        if (amountUSDTPremium > 0) {
-            USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
-        }
+        // trasnfer premium
+        USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
     }
     
     /**
-     * @notice settle premium in rounds while pooler token tranfsers.
+     * @notice settle premium in rounds while pooler token transfers.
      */
     function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
         _settlePremium(account, uint(-1));
@@ -661,36 +664,16 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         for (uint i = 0; i < options.length; i++) {
             IOption option = options[i];
             
-            // get current round 
-            uint currentRound = option.getRound();
-            
-            // sum all profits from all un-claimed rounds
-            uint [] memory rounds  = option.getUnclaimedProfitsRounds(msg.sender);
-            
-            for (uint j = 0; j<rounds.length; j++) {
-                uint round = rounds[j];
-                
-                // remember to exclude the current round(which has not settled)
-                if (round == currentRound) {
-                    continue;
-                }
-                
-                uint settlePrice = option.getRoundSettlePrice(round);
-                uint strikePrice = option.getRoundStrikePrice(round);
-                uint optionAmount = option.getRoundBalanceOf(round, msg.sender);
-                
-                // accumulate gain in rounds    
-                accountProfits = accountProfits.add(_calcProfits(settlePrice, strikePrice, optionAmount));
-            }
+            // check option profits
+            (uint optionProfits,) = checkOptionProfits(option, msg.sender);
+            accountProfits = accountProfits.add(optionProfits);
             
             // clear unclaimed rounds(claimed)
             option.clearUnclaimedProfitsRounds(msg.sender);
         }
         
-        // extra check the amount is not 0;
-        if (accountProfits > 0) {
-            _sendProfits(msg.sender, accountProfits);
-        }
+        // send profits
+        _sendProfits(msg.sender, accountProfits);
     }
     
     /**
@@ -715,7 +698,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         uint unsettledRound = option.getRound();
         
         // sum all profits from all un-claimed rounds
-        uint [] memory rounds  = option.getUnclaimedProfitsRounds(msg.sender);
+        uint [] memory rounds  = option.getUnclaimedProfitsRounds(account);
         for (uint i=0;i<rounds.length;i++) {
             // remember to exclude the current unsettled round
             if (rounds[i] == unsettledRound) {
@@ -773,7 +756,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice set utilization rate by owner
      */
-    function setUtilizationRate(uint rate) external override onlyOwner {
+    function setUtilizationRate(uint8 rate) external override onlyOwner {
         require(rate >=0 && rate <= 100, "rate[0,100]");
         utilizationRate = rate;
     }
@@ -781,7 +764,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice set max utilization rate by owner
      */
-    function setMaxUtilizationRate(uint maxrate) external override onlyOwner {
+    function setMaxUtilizationRate(uint8 maxrate) external override onlyOwner {
         require(maxrate >=0 && maxrate <= 100, "rate[0,100]");
         require(maxrate > utilizationRate, "less than rate");
         maxUtilizationRate = maxrate;
