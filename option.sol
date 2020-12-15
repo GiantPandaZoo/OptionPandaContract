@@ -481,15 +481,11 @@ contract Option is Context, IOption {
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256) internal {
+    function _beforeTokenTransfer(address, address to, uint256 amount) internal {
         require(block.timestamp < rounds[round].expiryDate, "option expired");
         
-        // mark holders of this round
-        if (from != address(0)) {
-            _markBuyer(from);
-        }
-        
-        if (to != address(0)) {
+        // mark token receipient
+        if (to != address(0) && amount > 0) {
             _markBuyer(to);    
         }
     }
