@@ -584,6 +584,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         
         // at this stage, the account has collaterals
         uint roundsCounter;
+        uint premiumBalance = _premiumBalance[account];
+        
         for (uint i = 0; i < options.length; i++) {
             IOption option = options[i];
             
@@ -595,9 +597,9 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 uint roundPremium = option.getRoundPremiumShare(r)
                                             .mul(accountCollateral)
                                             .div(PREMIUM_SHARE_MULTIPLIER);  // remember to div by PREMIUM_SHARE_MULTIPLIER
-                    
-                // shift un-distributed premiums to _premiumBalance
-                _premiumBalance[account] = _premiumBalance[account].add(roundPremium);
+
+                // add to local balance variable
+                premiumBalance = premiumBalance.add(roundPremium);
                 
                 // record last settled round
                 lastSettledRound = r;
@@ -609,6 +611,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                 if (roundsCounter >= numRounds) {
                     // mark max round premium claimed and return.
                     option.setSettledPremiumRound(lastSettledRound, account);
+                    // set back balance to storage
+                    _premiumBalance[account] = premiumBalance;
                     return false;
                 }
             }
@@ -616,7 +620,9 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             // mark max round premium claimed and proceed.
             option.setSettledPremiumRound(lastSettledRound, account);
         }
-        
+
+        // set back balance to storage
+        _premiumBalance[account] = premiumBalance;
         return true;
     }
 
@@ -661,7 +667,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             }
         }
         
-        // add un-distributed premium with _premiumBalance
         return (premium, numRound);
     }
     
