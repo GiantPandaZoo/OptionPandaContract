@@ -170,6 +170,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     uint16 internal constant INITIAL_SIGMA = 70;
     uint8 internal constant INITIAL_UTILIZATION_RATE = 50;
     uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
+    uint256 internal constant MAX_UINT256 = 2**256 - 1;
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
 
@@ -483,7 +484,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice poolers claim premium USDTs;
      */
     function claimPremium() external override whenPoolerNotPaused {
-        claimPremiumForRounds(uint(-1));
+        claimPremiumForRounds(MAX_UINT256);
     }
     
     /**
@@ -505,7 +506,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice settle premium in rounds while pooler token transfers.
      */
     function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
-        _settlePremium(account, uint(-1));
+        _settlePremium(account, MAX_UINT256);
     }
     
     /**
