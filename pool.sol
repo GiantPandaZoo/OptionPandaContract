@@ -224,6 +224,16 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     event SigmaUpdate(uint sigma, uint rate);
     
     /**
+     * @dev Profits Claiming log
+     */
+     event ProfitsClaim(address account, uint amount);
+     
+    /**
+     * @dev Premium Claiming log
+     */
+     event PremiumClaim(address account, uint amount);
+    
+    /**
      * @dev ownership transfer event log
      */
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -500,6 +510,9 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         
         // trasnfer premium
         USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
+        
+        // log
+        emit PremiumClaim(msg.sender, amountUSDTPremium);
     }
     
     /**
@@ -675,6 +688,9 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         
         // send profits
         _sendProfits(msg.sender, accountProfits);
+        
+        // log
+        emit ProfitsClaim(msg.sender, accountProfits);
     }
     
     /**
