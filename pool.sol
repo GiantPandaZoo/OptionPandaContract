@@ -563,7 +563,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * settle premium happens before any token exchange such as ERC20-transfer,mint,burn,
      * and manually claimPremium;
      * 
-     * @return false means the rounds has terminated due to gas limit
+     * @return false means the rounds has terminated due to round limit
      */
     function _settlePremium(address account, uint numRounds) internal returns(bool) {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
@@ -872,12 +872,12 @@ contract ETHCallOptionPool is OptionPoolBase {
         if (settlePrice > strikePrice && strikePrice > 0) { 
             // calculate ratio
             uint ratio = settlePrice.sub(strikePrice)
-                                    .mul(1e12)          // mul by 1e12 here to prevent from underflow
-                                    .div(strikePrice);
+                                        .mul(1e12)              // mul by 1e12 here to prevent from underflow
+                                        .div(strikePrice);
             
             // calculate ETH gain of this amount
             uint holderETHProfit = ratio.mul(optionAmount)
-                                    .div(1e12);         // remember to div by 1e12 previous mul-ed
+                                        .div(1e12);         // remember to div by 1e12 previous mul-ed
             
             return holderETHProfit;
         }
