@@ -194,6 +194,10 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     // the token contract of the pooler;
     IPoolerToken public poolerTokenContract;
     bool poolerTokenOnce;
+    
+    // platform management contract
+    address public poolManagerContract;
+    bool poolManagerOnce;
 
     // number of options
     uint immutable internal _numOptions;
@@ -210,7 +214,15 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev Modifier to make a function callable only buy poolerTokenContract
      */
     modifier onlyPoolerTokenContract() {
-        require(msg.sender == address(poolerTokenContract), "pool: need poolerTokenContract");
+        require(msg.sender == address(poolerTokenContract), "restricted");
+        _;
+    }
+    
+    /**
+     * @dev Modifier to make a function callable only buy pool manager
+     */
+    modifier onlyPoolManager() {
+        require(msg.sender == address(poolManagerContract), "restricted");
         _;
     }
 
@@ -343,7 +355,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      */
     function _sigmaToIndex() private view returns(uint) {
         // sigma to index
-        require(sigma >=15 && sigma <=145, "invalid sigma");
+        require(sigma >=15 && sigma <=145, "[15,145]");
         uint sigmaIndex = sigma / 5;
         return sigmaIndex;
     }
@@ -484,13 +496,24 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      */
     function adjustSigma(uint16 newSigma) external override onlyOwner {
         require (newSigma % 5 == 0, "needs 5*N");
-        require (newSigma >= 15 && newSigma <= 145, "out of range [15,145]");
+        require (newSigma >= 15 && newSigma <= 145, "[15,145]");
         
         sigma = newSigma;
         
         emit SigmaSet(sigma);
     }
 
+    /**
+     * @notice pool manager claim 1% premium
+     */
+    function claimManagerPremium() external override onlyPoolManager {
+        uint reserve = premiumReserve;
+        premiumReserve = 0; // zero premium balance
+        
+        // trasnfer premium
+        USDTContract.safeTransfer(msg.sender, reserve);
+    }
+    
     /**
      * @notice poolers claim premium USDTs;
      */
@@ -776,6 +799,15 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     }
      
     /**
+     * @notice set pool manager once(OPA DAO)
+     */
+    function setPoolManager(address poolManager) external override onlyOwner {
+        require (!poolManagerOnce, "already set");
+        poolManagerContract = poolManager;
+        poolManagerOnce = true;
+    }
+    
+    /**
      * @notice set pooler token once
      */
     function setPoolerToken(IPoolerToken poolerToken) external override onlyOwner {
@@ -784,11 +816,12 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         poolerTokenContract = poolerToken;
         poolerTokenOnce = true;
     }
+    
     /**
      * @notice set utilization rate by owner
      */
     function setUtilizationRate(uint8 rate) external override onlyOwner {
-        require(rate >=0 && rate <= 100, "rate[0,100]");
+        require(rate >=0 && rate <= 100, "[0,100]");
         utilizationRate = rate;
     }
     
@@ -796,7 +829,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice set max utilization rate by owner
      */
     function setMaxUtilizationRate(uint8 maxrate) external override onlyOwner {
-        require(maxrate >=0 && maxrate <= 100, "rate[0,100]");
+        require(maxrate >=0 && maxrate <= 100, "[0,100]");
         require(maxrate > utilizationRate, "less than rate");
         maxUtilizationRate = maxrate;
     }
@@ -851,8 +884,8 @@ contract ETHCallOptionPool is OptionPoolBase {
      * @notice withdraw the pooled ethers;
      */
     function withdrawETH(uint amountETH) external whenPoolerNotPaused {
-        require (amountETH <= poolerTokenContract.balanceOf(msg.sender), "insufficient balance");
-        require (amountETH <= NWA(), "insufficient collateral");
+        require (amountETH <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
+        require (amountETH <= NWA(), "collateral exceeded");
 
         // burn pooler token
         poolerTokenContract.burn(msg.sender, amountETH);
@@ -949,8 +982,8 @@ contract ERC20CallOptionPool is OptionPoolBase {
      * @notice withdraw the pooled ethers;
      */
     function withdrawAsset(uint amount) external whenPoolerNotPaused {
-        require (amount <= poolerTokenContract.balanceOf(msg.sender), "insufficient balance");
-        require (amount <= NWA(), "insufficient collateral");
+        require (amount <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
+        require (amount <= NWA(), "collateral exceeded");
 
         // burn pooler token
         poolerTokenContract.burn(msg.sender, amount);
@@ -1049,8 +1082,8 @@ contract PutOptionPool is OptionPoolBase {
      * @notice withdraw the pooled USDT;
      */
     function withdrawUSDT(uint amountUSDT) external whenPoolerNotPaused {
-        require (amountUSDT <= poolerTokenContract.balanceOf(msg.sender), "insufficient balance");
-        require (amountUSDT <= NWA(), "insufficient collateral");
+        require (amountUSDT <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
+        require (amountUSDT <= NWA(), "collateral exceeded");
 
         // burn pooler token
         poolerTokenContract.burn(msg.sender, amountUSDT);
