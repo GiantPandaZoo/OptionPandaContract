@@ -173,6 +173,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
+    uint256 public premiumReserve; // platform owned 1% premium
 
     IOption [] internal _options; // all option contracts
     address internal _owner; // owner of this contract
@@ -541,8 +542,15 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
 
         // settle preimum dividends
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
+        uint totalPremiums = option.totalPremiums();
+        
         if (poolerTotalSupply > 0) {
-            uint premiumShare = option.totalPremiums()
+            // 1% belongs to platform
+            uint reserve = totalPremiums.div(100);
+            premiumReserve = premiumReserve.add(reserve);
+            
+            // 99% belongs to all pooler
+            uint premiumShare = totalPremiums.sub(reserve)
                                 .mul(PREMIUM_SHARE_MULTIPLIER)      // mul share with PREMIUM_SHARE_MULTIPLIER to prevent from underflow
                                 .div(poolerTotalSupply);
                                 
