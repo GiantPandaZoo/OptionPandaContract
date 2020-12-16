@@ -200,7 +200,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     bool poolManagerOnce;
 
     // number of options
-    uint immutable internal _numOptions;
+    uint8 immutable internal _numOptions;
 
     /**
      * @dev Modifier to make a function callable only buy owner
@@ -276,7 +276,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, uint numOptions) public {
+    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, uint8 numOptions) public {
         _owner = msg.sender;
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
@@ -860,7 +860,7 @@ contract ETHCallOptionPool is OptionPoolBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
         OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { }
 
@@ -954,7 +954,7 @@ contract ERC20CallOptionPool is OptionPoolBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
         OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
              _name = name_;
@@ -1052,7 +1052,7 @@ contract PutOptionPool is OptionPoolBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint numOptions)
+    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
         OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
             _name = name_;
