@@ -540,10 +540,11 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         collateral = collateral.sub(totalProfits);
 
         // settle preimum dividends
-        if (poolerTokenContract.totalSupply() > 0) {
+        uint poolerTotalSupply = poolerTokenContract.totalSupply();
+        if (poolerTotalSupply > 0) {
             uint premiumShare = option.totalPremiums()
                                 .mul(PREMIUM_SHARE_MULTIPLIER)      // mul share with PREMIUM_SHARE_MULTIPLIER to prevent from underflow
-                                .div(poolerTokenContract.totalSupply());
+                                .div(poolerTotalSupply);
                                 
             // set premium share to round for poolers
             // ASSUMPTION:
