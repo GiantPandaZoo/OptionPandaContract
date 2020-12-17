@@ -1124,7 +1124,7 @@ contract PutOptionPool is OptionPoolBase {
         if (settlePrice < strikePrice && strikePrice > 0) {  // put option get profits at this round
             // calculate ratio
             uint ratio = strikePrice.sub(settlePrice)
-                                    .mul(1e12)      // mul 1e12 to prevent from underflow
+                                    .mul(1e12)                  // mul 1e12 to prevent from underflow
                                     .div(strikePrice);
 
             // holder share
@@ -1133,8 +1133,8 @@ contract PutOptionPool is OptionPoolBase {
          
             // convert to USDT gain
             uint holderUSDTProfit = holderShare.mul(strikePrice)
-                                    .div(1e12)              // remember to div 1e12 previous multipied
-                                    .div(ASSET_PRICE_UNIT);   // remember to div price unit
+                                    .div(1e12)                  // remember to div 1e12 previous multipied
+                                    .div(ASSET_PRICE_UNIT);     // remember to div price unit
 
             return holderUSDTProfit;
         }
