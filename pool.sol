@@ -183,7 +183,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     
     uint public collateral; // collaterals in this pool
     
-    uint256 internal constant MAX_UINT256 = ~uint256(0);
+    uint256 internal constant MAX_UINT256 = type(uint256).max;
     uint256 internal constant PREMIUM_SHARE_MULTIPLIER = 1e18;
     uint256 internal constant USDT_DECIMALS = 1e6;
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
