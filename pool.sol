@@ -989,11 +989,11 @@ contract ERC20CallOptionPool is OptionPoolBase {
     /**
      * @notice deposit asset to this pool directly.
      */
-    function depositAsset(uint256 amount) external whenPoolerNotPaused {
-        require(amount > 0, "0 value");
-        AssetContract.safeTransferFrom(msg.sender, address(this), amount);
-        poolerTokenContract.mint(msg.sender, amount);
-        collateral = collateral.add(amount);
+    function depositAsset(uint256 amountAsset) external whenPoolerNotPaused {
+        require(amountAsset > 0, "0 value");
+        AssetContract.safeTransferFrom(msg.sender, address(this), amountAsset);
+        poolerTokenContract.mint(msg.sender, amountAsset);
+        collateral = collateral.add(amountAsset);
     }
 
     /**
