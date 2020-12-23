@@ -213,13 +213,13 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     IPoolerToken public poolerTokenContract;
     bool poolerTokenOnce;
     
-    // platform management contract
+    // platform contract
     address public poolManagerContract;
     bool poolManagerOnce;
 
     // number of options
     uint8 immutable internal _numOptions;
-
+    
     /**
      * @dev Modifier to make a function callable only buy owner
      */
