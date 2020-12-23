@@ -183,7 +183,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     
     uint public collateral; // collaterals in this pool
     
-    uint256 internal constant MAX_UINT256 = type(uint256).max;
     uint256 internal constant PREMIUM_SHARE_MULTIPLIER = 1e18;
     uint256 internal constant USDT_DECIMALS = 1e6;
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
@@ -537,7 +536,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice poolers claim premium USDTs;
      */
     function claimPremium() external override whenPoolerNotPaused {
-        claimPremiumForRounds(MAX_UINT256);
+        claimPremiumForRounds(type(uint256).max);
     }
     
     /**
@@ -562,7 +561,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @notice settle premium in rounds while pooler token transfers.
      */
     function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
-        _settlePremium(account, MAX_UINT256);
+        _settlePremium(account, type(uint256).max);
     }
     
     /**
