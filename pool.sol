@@ -17,9 +17,28 @@ contract AggregateUpdater {
         _;
     }
     
-    function update() external {
+    /**
+     * @dev return the earliest update time from all pools
+     */
+    function getNextUpdateTime() external view returns (uint) {
+        uint nextUpdateTime = block.timestamp + 3600;
         for (uint i=0;i<pools.length;i++) {
-            pools[i].update();
+            if (pools[i].getNextUpdateTime() < nextUpdateTime) {
+                nextUpdateTime = pools[i].getNextUpdateTime();
+            }
+        }
+        return nextUpdateTime;
+    }
+    
+    /**
+     * @dev update the expired pools
+     */
+    function update() external {
+        IOptionPool [] memory mempools = pools;
+        for (uint i=0;i<mempools.length;i++) {
+            if (mempools[i].getNextUpdateTime() < block.timestamp) {
+                mempools[i].update();  
+            }
         }
     }
     
