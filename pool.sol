@@ -999,17 +999,17 @@ contract ERC20CallOptionPool is OptionPoolBase {
     /**
      * @notice withdraw the pooled ethers;
      */
-    function withdrawAsset(uint amount) external whenPoolerNotPaused {
-        require (amount <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
-        require (amount <= NWA(), "collateral exceeded");
+    function withdrawAsset(uint amountAsset) external whenPoolerNotPaused {
+        require (amountAsset <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
+        require (amountAsset <= NWA(), "collateral exceeded");
 
         // burn pooler token
-        poolerTokenContract.burn(msg.sender, amount);
+        poolerTokenContract.burn(msg.sender, amountAsset);
         // substract collateral
-        collateral = collateral.sub(amount);
+        collateral = collateral.sub(amountAsset);
 
         // transfer asset back to msg.sender
-        AssetContract.safeTransfer(msg.sender, amount);
+        AssetContract.safeTransfer(msg.sender, amountAsset);
     }
         
     /**
