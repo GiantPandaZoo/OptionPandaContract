@@ -45,6 +45,16 @@ contract AggregateUpdater {
     function addPool(IOptionPool pool) external onlyOwner {
         pools.push(pool);
     }
+
+    function removePool(IOptionPool pool) external onlyOwner {
+        for (uint i=0;i<pools.length;i++) {
+            if (pools[i] == pool) {
+                pools[i] = pools[pools.length - 1];
+                pools.pop();
+                return;
+            }
+        }
+    }
 }
 
 contract PausablePool is Context{
@@ -1016,7 +1026,7 @@ contract ERC20CallOptionPool is OptionPoolBase {
      * @notice sum total collaterals pledged
      */
     function _totalPledged() internal view override returns (uint amount) {
-        for (uint i = 0;i< _options.length;i++) {
+        for (uint i = 0;i< _options.length;i++) {   
             amount += _options[i].totalSupply();
         }
     }
