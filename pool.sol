@@ -79,7 +79,7 @@ contract PausablePool is Context{
      * - The contract must not be paused.
      */
     modifier whenPoolerNotPaused() {
-        require(!_poolerPaused, "PausablePool: pooler paused");
+        require(!_poolerPaused, "paused");
         _;
     }
    
@@ -91,7 +91,7 @@ contract PausablePool is Context{
      * - The contract must be paused.
      */
     modifier whenPoolerPaused() {
-        require(_poolerPaused, "PausablePool: pooler not paused");
+        require(_poolerPaused, "not paused");
         _;
     }
     
@@ -103,7 +103,7 @@ contract PausablePool is Context{
      * - The contract must not be paused.
      */
     modifier whenBuyerNotPaused() {
-        require(!_buyerPaused, "PausablePool: buyer paused");
+        require(!_buyerPaused, "paused");
         _;
     }
     
@@ -115,7 +115,7 @@ contract PausablePool is Context{
      * - The contract must be paused.
      */
     modifier whenBuyerPaused() {
-        require(_buyerPaused, "PausablePool: buyer not paused");
+        require(_buyerPaused, "not paused");
         _;
     }
     
@@ -234,7 +234,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev Modifier to make a function callable only buy owner
      */
     modifier onlyOwner() {
-        require(msg.sender == _owner, "pool: need owner");
+        require(msg.sender == _owner, "restricted");
         _;
     }
     
@@ -253,11 +253,26 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         require(msg.sender == address(poolManagerContract), "restricted");
         _;
     }
+        
+    /**
+     * @dev deposit event
+     */
+    event Deposit(address indexed account, uint amount);
+    
+    /**
+     * @dev withdraw event
+     */
+    event Withdraw(address indexed account, uint amount);
+    
+    /**
+     * @dev option buy Log
+     */
+    event Buy(address indexed account, address indexed optionContract, uint round, uint amount, uint premiumCost);
 
     /**
      * @dev settle debug log
      */
-    event SettleLog (string name, uint totalProfit, uint totalOptionSold);
+    event SettleLog(string name, uint totalProfit, uint totalOptionSold);
     
     /**
      * @dev sigma update log
@@ -267,12 +282,12 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @dev Profits Claiming log
      */
-     event ProfitsClaim(address account, uint amount);
+     event ProfitsClaim(address indexed account, uint amount);
      
     /**
      * @dev Premium Claiming log
      */
-     event PremiumClaim(address account, uint amount);
+     event PremiumClaim(address indexed account, uint amount);
     
     /**
      * @dev ownership transfer event log
@@ -327,7 +342,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * @dev transfer ownership
      */
     function transferOwnership(address newOwner) external override onlyOwner {
-        require(newOwner != address(0), "owner zero");
+        require(newOwner != address(0), "zero");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
     }
@@ -350,18 +365,18 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
     /**
      * @notice buy options via USDT, pool receive premium
      */
-    function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused returns(bool) {
+    function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused {
         // check option expiry
         require(block.timestamp < optionContract.expiryDate(), "expired");
         // check if option current round is the given round
-        require (optionContract.getRound() == round, "round mismatch");
+        require (optionContract.getRound() == round, "mismatch");
             
         // check remaing options
         require(optionContract.balanceOf(address(this)) >= amount, "soldout");
 
         // calculate premium cost
         uint premium = premiumCost(amount, optionContract);
-        require(premium > 0, "option to buy too less");
+        require(premium > 0, "too less");
 
         // transfer premium USDTs to this pool
         USDTContract.safeTransferFrom(msg.sender, address(this), premium);
@@ -375,7 +390,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         // sigma: count sold options
         _sigmaSoldOptions = _sigmaSoldOptions.add(amount);
         
-        return true;
+        // log
+        emit Buy(msg.sender, address(optionContract), round, amount, premium);
     }
     
     /**
@@ -906,6 +922,9 @@ contract ETHCallOptionPool is OptionPoolBase {
         require(msg.value > 0, "0 value");
         poolerTokenContract.mint(msg.sender, msg.value);
         collateral = collateral.add(msg.value);
+        
+        // log
+        emit Deposit(msg.sender, msg.value);
     }
     
     /**
@@ -922,6 +941,9 @@ contract ETHCallOptionPool is OptionPoolBase {
 
         // transfer ETH to msg.sender
         msg.sender.sendValue(amountETH);
+        
+        // log 
+        emit Withdraw(msg.sender, amountETH);
     }
         
     /**
@@ -1004,6 +1026,9 @@ contract ERC20CallOptionPool is OptionPoolBase {
         AssetContract.safeTransferFrom(msg.sender, address(this), amountAsset);
         poolerTokenContract.mint(msg.sender, amountAsset);
         collateral = collateral.add(amountAsset);
+        
+        // log
+        emit Deposit(msg.sender, amountAsset);
     }
 
     /**
@@ -1020,6 +1045,9 @@ contract ERC20CallOptionPool is OptionPoolBase {
 
         // transfer asset back to msg.sender
         AssetContract.safeTransfer(msg.sender, amountAsset);
+        
+        // log 
+        emit Withdraw(msg.sender, amountAsset);
     }
         
     /**
@@ -1104,6 +1132,9 @@ contract PutOptionPool is OptionPoolBase {
         USDTContract.safeTransferFrom(msg.sender, address(this), amountUSDT);
         poolerTokenContract.mint(msg.sender, amountUSDT);
         collateral = collateral.add(amountUSDT);
+        
+        // log
+        emit Deposit(msg.sender, amountUSDT);
     }
     
     /**
@@ -1120,6 +1151,9 @@ contract PutOptionPool is OptionPoolBase {
 
         // transfer USDT to msg.sender
         USDTContract.safeTransfer(msg.sender, amountUSDT);
+        
+        // log 
+        emit Withdraw(msg.sender, amountUSDT);
     }
     
     /**

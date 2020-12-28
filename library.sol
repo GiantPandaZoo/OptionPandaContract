@@ -615,7 +615,7 @@ interface IOptionPool {
     function settlePremiumByPoolerToken(address account) external;
     function update() external;
     function optionsLeft(IOption optionContract) external view returns (uint256 left, uint round);
-    function buy(uint amount, IOption optionContract, uint round) external returns(bool);
+    function buy(uint amount, IOption optionContract, uint round) external;
     function premiumCost(uint amount, IOption optionContract) external view returns(uint);
     function listOptions() external view returns (IOption []memory);
     function currentUtilizationRate() external view returns (uint256);
