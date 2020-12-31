@@ -30,8 +30,6 @@ contract Option is Context, IOption {
     /// @dev mark buyer's unclaimed rounds of profits.
     /// the rounds array is always ordered.
     mapping (address => uint[]) private unclaimedRounds;
-    // historical claimed rounds
-    mapping (address => uint[]) private claimedRounds;
     
     /// @dev mark pooler's highest settled round of premium.
     mapping (address => uint) private settledPremiumRounds;
@@ -155,27 +153,13 @@ contract Option is Context, IOption {
     function getUnclaimedProfitsRounds(address account) external override view returns (uint[] memory) {
         return unclaimedRounds[account];
     }
-    
-    /**
-     * @dev get all claimed profits round for account
-     */
-    function getClaimedProfitsRounds(address account) external override view returns (uint[] memory) {
-        return claimedRounds[account];
-    }
-    
+
     /**
      * @dev clear unclaimed profits round for account
      * @notice current round excluded
      */
     function clearUnclaimedProfitsRounds(address account) external override onlyPool {
         if (unclaimedRounds[account].length != 0) {
-            // move unclaimed rounds to claimedRounds
-            for (uint i=0;i<unclaimedRounds[account].length;i++) {
-                if (unclaimedRounds[account][i] != round) {
-                    claimedRounds[account].push(unclaimedRounds[account][i]);
-                }
-            }
-            
             // load the latest round
             uint lastIndex = unclaimedRounds[account].length - 1;
             uint lastRound = unclaimedRounds[account][lastIndex];
