@@ -185,7 +185,7 @@ contract PausablePool is Context{
 /**
  * @title base contract for option pool
  */
-abstract contract OptionPoolBase is IOptionPool, PausablePool{
+abstract contract PandaBase is IOptionPool, PausablePool{
     using SafeERC20 for IERC20;
     using SafeERC20 for IOption;
     using SafeMath for uint;
@@ -370,7 +370,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         require(block.timestamp < optionContract.expiryDate(), "expired");
         // check if option current round is the given round
         require (optionContract.getRound() == round, "mismatch");
-            
         // check remaing options
         require(optionContract.balanceOf(address(this)) >= amount, "soldout");
 
@@ -501,13 +500,14 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
             // sigma range [15, 145]
             if (rate > 90 && s < 145) {
                 s += 5;
-                emit SigmaUpdate(s, rate);
             } else if (rate < 50 && s > 15) {
                 s -= 5;
-                emit SigmaUpdate(s, rate);
             }
             
             sigma = s;
+            
+            // log sigma update 
+            emit SigmaUpdate(s, rate);
         }
         
         // new metrics
@@ -554,7 +554,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
         uint reserve = premiumReserve;
         premiumReserve = 0; // zero premium balance
         
-        // trasnfer premium
+        // transfer manager's premium
         USDTContract.safeTransfer(msg.sender, reserve);
     }
     
@@ -638,9 +638,8 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
      * settle premium happens before any token exchange such as ERC20-transfer,mint,burn,
      * and manually claimPremium;
      * 
-     * @return false means the rounds has terminated due to round limit
      */
-    function _settlePremium(address account, uint numRounds) internal returns(bool) {
+    function _settlePremium(address account, uint numRounds) internal {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         // create a memory copy of array
         IOption [] memory options = _options;
@@ -655,7 +654,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                     options[i].setSettledPremiumRound(options[i].getRound() - 1, account);
                 }
             }
-            return true;
+            return;
         }
         
         // at this stage, the account has collaterals
@@ -689,7 +688,7 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
                     option.setSettledPremiumRound(lastSettledRound, account);
                     // set back balance to storage
                     _premiumBalance[account] = premiumBalance;
-                    return false;
+                    return;
                 }
             }
             
@@ -699,7 +698,6 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
 
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
-        return true;
     }
 
     /**
@@ -899,13 +897,13 @@ abstract contract OptionPoolBase is IOptionPool, PausablePool{
  * ETHCallOptionPool Call Option Pool use Ethers as collateral and bets
  * on Chainlink Oralce Price Feed.
  */
-contract ETHCallOptionPool is OptionPoolBase {
+contract ETHCallOptionPool is PandaBase {
     /**
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
     constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { }
 
     /**
@@ -996,7 +994,7 @@ contract ETHCallOptionPool is OptionPoolBase {
  * ERC20 Asset Call Option Pool use ERC20 asset as collateral and bets
  * on Chainlink Oralce Price Feed.
  */
-contract ERC20CallOptionPool is OptionPoolBase {
+contract ERC20CallOptionPool is PandaBase {
     string private _name;
     IERC20 public AssetContract;
 
@@ -1005,7 +1003,7 @@ contract ERC20CallOptionPool is OptionPoolBase {
      * @param priceFeed Chainlink contract for getting Ether price
      */
     constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
              _name = name_;
              AssetContract = AssetContract_;
@@ -1100,7 +1098,7 @@ contract ERC20CallOptionPool is OptionPoolBase {
  * Put Option Pool requires USDT as collateral and 
  * bets on Chainlink Oralce Price Feed of one asset.
  */
-contract PutOptionPool is OptionPoolBase {
+contract PutOptionPool is PandaBase {
     string private _name;
     uint private immutable ASSET_PRICE_UNIT;
     
@@ -1109,7 +1107,7 @@ contract PutOptionPool is OptionPoolBase {
      * @param priceFeed Chainlink contract for getting Ether price
      */
     constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        OptionPoolBase(USDTContract, priceFeed, cdfContract, numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
             _name = name_;
             ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);
