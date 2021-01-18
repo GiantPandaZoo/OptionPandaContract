@@ -603,12 +603,18 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         if (poolerTotalSupply > 0) {
             // 1% belongs to platform
             uint reserve = totalPremiums.div(100);
-            premiumReserve = premiumReserve.add(reserve);
                     
-            // transfer OPA hoolder's premium
+            // transfer OPA holder's premium
             if (poolManagerContract != address(0)) {
-                USDTContract.safeTransfer(poolManagerContract, premiumReserve);
-                premiumReserve = 0; // zero premium balance
+                if (premiumReserve > 0) { // historical reserves exists
+                    USDTContract.safeTransfer(poolManagerContract, premiumReserve + reserve);
+                    premiumReserve = 0; // zero premium balance
+                } else { // only current reserve
+                    USDTContract.safeTransfer(poolManagerContract, reserve);
+                }
+            } else {
+                // accumulated reserves in storage
+                premiumReserve = premiumReserve.add(reserve);
             }
             
             // 99% belongs to all pooler
