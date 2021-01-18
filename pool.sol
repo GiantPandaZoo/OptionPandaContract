@@ -548,17 +548,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
 
     /**
-     * @notice pool manager claim 1% premium
-     */
-    function claimManagerPremium() external override onlyPoolManager {
-        uint reserve = premiumReserve;
-        premiumReserve = 0; // zero premium balance
-        
-        // transfer manager's premium
-        USDTContract.safeTransfer(msg.sender, reserve);
-    }
-    
-    /**
      * @notice poolers claim premium USDTs;
      */
     function claimPremium() external override whenPoolerNotPaused {
@@ -615,6 +604,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             // 1% belongs to platform
             uint reserve = totalPremiums.div(100);
             premiumReserve = premiumReserve.add(reserve);
+                    
+            // transfer OPA hoolder's premium
+            if (poolManagerContract != address(0)) {
+                USDTContract.safeTransfer(poolManagerContract, premiumReserve);
+                premiumReserve = 0; // zero premium balance
+            }
             
             // 99% belongs to all pooler
             uint premiumShare = totalPremiums.sub(reserve)

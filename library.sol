@@ -620,7 +620,6 @@ interface IOptionPool {
     function currentUtilizationRate() external view returns (uint256);
     function adjustSigma(uint16 newSigma) external;
     function NWA() external view returns (uint);
-    function claimManagerPremium() external;
     function claimPremium() external;
     function claimPremiumForRounds(uint numRounds) external;
     function claimProfits() external;
