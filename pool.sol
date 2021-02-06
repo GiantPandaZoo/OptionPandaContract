@@ -630,7 +630,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             //  if one pooler's token amount keeps unchanged after settlement, then
             //      accmulated premiumShare * (pooler token) 
             //  is the share for one pooler.
-            option.setRoundAccPremiumShare(round, premiumShare.add(option.getRoundAccPremiumShare(round-1)));
+            uint accPremiumShare = premiumShare.add(option.getRoundAccPremiumShare(round-1));
+            option.setRoundAccPremiumShare(round, accPremiumShare);
             
             // OPA share per seller's token setting:
             // 25% of block OPA reward is dedicated to all Put or Call pooler.
