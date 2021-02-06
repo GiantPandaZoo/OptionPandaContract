@@ -193,7 +193,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     uint public collateral; // collaterals in this pool
     
-    uint256 internal constant PREMIUM_SHARE_MULTIPLIER = 1e18;
+    uint256 internal constant SHARE_MULTIPLIER = 1e18;
     uint256 internal constant USDT_DECIMALS = 1e6;
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
     uint16 internal constant INITIAL_SIGMA = 70;
@@ -201,7 +201,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
-    uint256 public premiumReserve; // platform owned 1% premium
 
     IOption [] internal _options; // all option contracts
     address internal _owner; // owner of this contract
@@ -223,10 +222,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     IPoolerToken public poolerTokenContract;
     bool poolerTokenOnce;
     
-    // platform contract
-    address public poolManagerContract;
-    bool poolManagerOnce;
-
+    address public poolManagerContract;     // platform contract
+    
+    IERC20 immutable public OPAToken;  // OPA token contract
+    uint public OPAPerBlock  = 20 * 1e18;
+    uint lastOPARewardBlock; // last OPA reward block;
+    uint sellerOPAShare; // unit OPA share for pooler, set when this round closes.
+        
     // number of options
     uint8 immutable internal _numOptions;
     
@@ -319,11 +321,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, uint8 numOptions) public {
+    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, IERC20 OPAToken_, uint8 numOptions) public {
         _owner = msg.sender;
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
+        OPAToken = OPAToken_;
+        lastOPARewardBlock = block.number;
         utilizationRate = INITIAL_UTILIZATION_RATE;
         maxUtilizationRate = INITIAL_MAX_UTILIZATION_RATE;
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
@@ -391,6 +395,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // log
         emit Buy(msg.sender, address(optionContract), round, amount, premium);
+    }
+    
+    /**
+     * @dev set OPA reward per height
+     */
+    function setOPAReward(uint256 amount) external onlyOwner {
+        OPAPerBlock = amount;
     }
     
     /**
@@ -551,21 +562,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice poolers claim premium USDTs;
      */
     function claimPremium() external override whenPoolerNotPaused {
-        claimPremiumForRounds(type(uint256).max);
-    }
-    
-    /**
-     * @notice poolers claim premium USDTs for num rounds.
-     */
-    function claimPremiumForRounds(uint numRounds) public override whenPoolerNotPaused {
         // settle un-distributed premiums in rounds to _premiumBalance;
-        _settlePremium(msg.sender, numRounds);
+        _settlePremium(msg.sender);
 
         // premium balance modification
         uint amountUSDTPremium = _premiumBalance[msg.sender];
         _premiumBalance[msg.sender] = 0; // zero premium balance
         
-        // trasnfer premium
+        // transfer premium
         USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
         
         // log
@@ -573,16 +577,24 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
     
     /**
+     * @notice claim OPA;
+     */
+    function claimOPA() external override whenPoolerNotPaused {
+    }
+    
+    /**
      * @notice settle premium in rounds while pooler token transfers.
      */
     function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
-        _settlePremium(account, type(uint256).max);
+        _settlePremium(account);
     }
     
     /**
      * @dev settle option contract
      */
     function _settleOption(IOption option, uint settlePrice) internal {
+        require(poolManagerContract!= address(0), "poolmgr not set");
+        
         uint totalSupply = option.totalSupply();
         uint strikePrice = option.strikePrice();
         
@@ -601,33 +613,42 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint totalPremiums = option.totalPremiums();
         
         if (poolerTotalSupply > 0) {
+            uint round = option.getRound();
             // 1% belongs to platform
             uint reserve = totalPremiums.div(100);
                     
-            // transfer OPA holder's premium
-            if (poolManagerContract != address(0)) {
-                if (premiumReserve > 0) { // historical reserves exists
-                    USDTContract.safeTransfer(poolManagerContract, premiumReserve + reserve);
-                    premiumReserve = 0; // zero premium balance
-                } else { // only current reserve
-                    USDTContract.safeTransfer(poolManagerContract, reserve);
-                }
-            } else {
-                // accumulated reserves in storage
-                premiumReserve = premiumReserve.add(reserve);
-            }
+            // transfer OPA holders' premium
+            USDTContract.safeTransfer(poolManagerContract, reserve);
             
             // 99% belongs to all pooler
             uint premiumShare = totalPremiums.sub(reserve)
-                                .mul(PREMIUM_SHARE_MULTIPLIER)      // mul share with PREMIUM_SHARE_MULTIPLIER to prevent from underflow
+                                .mul(SHARE_MULTIPLIER)      // mul share with SHARE_MULTIPLIER to prevent from underflow
                                 .div(poolerTotalSupply);
                                 
             // set premium share to round for poolers
             // ASSUMPTION:
             //  if one pooler's token amount keeps unchanged after settlement, then
-            //      premiumShare * (pooler token) 
+            //      accmulated premiumShare * (pooler token) 
             //  is the share for one pooler.
-            option.setRoundPremiumShare(option.getRound(), premiumShare);
+            option.setRoundAccPremiumShare(round, premiumShare.add(option.getRoundAccPremiumShare(round-1)));
+            
+            // OPA share per seller's token setting:
+            // 25% of block OPA reward is dedicated to all Put or Call pooler.
+            uint totalOPA = OPAPerBlock
+                                    .mul(25)
+                                    .mul(block.number.sub(lastOPARewardBlock))
+                                    .div(100);
+    
+            uint opaSellerShare = totalOPA
+                                    .mul(SHARE_MULTIPLIER)
+                                    .div(poolerTotalSupply);
+                                    
+            uint accOPASellerShare = opaSellerShare.add(option.getRoundAccOPASellerShare(round-1));
+                                    
+            option.setRoundAccOPASellerShare(round, accOPASellerShare);
+        
+            // reset reward block
+            lastOPARewardBlock = block.number;
         }
         
         // log
@@ -640,61 +661,27 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * and manually claimPremium;
      * 
      */
-    function _settlePremium(address account, uint numRounds) internal {
+    function _settlePremium(address account) internal {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         // create a memory copy of array
         IOption [] memory options = _options;
-        
-        // at any time we find a pooler with 0 collateral, we can mark the previous rounds settled
-        // to avoid meaningless round loops below.
-        if (accountCollateral == 0) {
-            for (uint i = 0; i < options.length; i++) {
-                if (options[i].getRound() > 0) {
-                    // all settled rounds before current round marked settled, which also means
-                    // new collateral will make money immediately at current round.
-                    options[i].setSettledPremiumRound(options[i].getRound() - 1, account);
-                }
-            }
-            return;
-        }
-        
-        // at this stage, the account has collaterals
-        uint roundsCounter;
         uint premiumBalance = _premiumBalance[account];
         
         for (uint i = 0; i < options.length; i++) {
             IOption option = options[i];
             
-            // shift premium from settled rounds with rounds control
             uint maxRound = option.getRound();
             uint lastSettledRound = option.getSettledPremiumRound(account);
             
-            for (uint r = lastSettledRound + 1; r < maxRound; r++) {
-                uint roundPremium = option.getRoundPremiumShare(r)
-                                            .mul(accountCollateral)
-                                            .div(PREMIUM_SHARE_MULTIPLIER);  // remember to div by PREMIUM_SHARE_MULTIPLIER
+            uint roundPremium = option.getRoundAccPremiumShare(maxRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+                                        .mul(accountCollateral)
+                                        .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
 
-                // add to local balance variable
-                premiumBalance = premiumBalance.add(roundPremium);
-                
-                // record last settled round
-                lastSettledRound = r;
-
-                // @dev BLOCK GAS LIMIT PROBLEM
-                // poolers needs to submit multiple transactions to claim ALL premiums in all rounds
-                // due to gas limit.
-                roundsCounter++;
-                if (roundsCounter >= numRounds) {
-                    // mark max round premium claimed and return.
-                    option.setSettledPremiumRound(lastSettledRound, account);
-                    // set back balance to storage
-                    _premiumBalance[account] = premiumBalance;
-                    return;
-                }
-            }
+            // add to local balance variable first
+            premiumBalance = premiumBalance.add(roundPremium);
             
-            // mark max round premium claimed and proceed.
-            option.setSettledPremiumRound(lastSettledRound, account);
+            // mark highest claimed round
+            option.setSettledPremiumRound(maxRound - 1, account);
         }
 
         // set back balance to storage
@@ -718,31 +705,24 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice poolers sum premium USDTs;
      */
-    function checkPremium(address account) external override view returns(uint256 premium, uint numRound) {
+    function checkPremium(address account) external override view returns(uint256 premium) {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
 
-        // if the account has 0 value pooled
-        if (accountCollateral == 0) {
-            return (0, 0);
-        }
-        
         premium = _premiumBalance[account];
-        
+
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
             uint maxRound = option.getRound();
+            uint lastSettledRound = option.getSettledPremiumRound(account);
             
-            for (uint r = option.getSettledPremiumRound(account) + 1; r < maxRound; r++) {
-                uint roundPremium = option.getRoundPremiumShare(r)
-                                            .mul(accountCollateral)
-                                            .div(PREMIUM_SHARE_MULTIPLIER);  // remember to div by PREMIUM_SHARE_MULTIPLIER
-                    
-                premium = premium.add(roundPremium);
-                numRound++;
-            }
+            uint roundPremium = option.getRoundAccPremiumShare(maxRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+                                    .mul(accountCollateral)
+                                    .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
+            
+            premium = premium.add(roundPremium);
         }
         
-        return (premium, numRound);
+        return (premium);
     }
     
     /**
@@ -845,9 +825,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice set pool manager once(OPA DAO)
      */
     function setPoolManager(address poolManager) external override onlyOwner {
-        require (!poolManagerOnce, "already set");
         poolManagerContract = poolManager;
-        poolManagerOnce = true;
     }
     
     /**
@@ -903,8 +881,8 @@ contract ETHCallOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
+    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract,  IERC20 OPAToken_, uint8 numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, OPAToken_, numOptions)
         public { }
 
     /**
@@ -1003,8 +981,8 @@ contract ERC20CallOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
+    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, IERC20 OPAToken_, uint8 numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, OPAToken_, numOptions)
         public { 
              _name = name_;
              AssetContract = AssetContract_;
@@ -1107,8 +1085,8 @@ contract PutOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
+    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, IERC20 OPAToken_, uint8 numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, OPAToken_, numOptions)
         public { 
             _name = name_;
             ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);

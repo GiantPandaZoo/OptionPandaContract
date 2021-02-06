@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
@@ -21,7 +22,8 @@ contract Option is Context, IOption {
         uint settlePrice;
         
         uint totalPremiums; // pooler's shared premium at this round
-        uint premiumShare; // unit premium be calc & set in settlement for pooler
+        uint accPremiumShare; // unit premium be calc & set in settlement for pooler
+        uint accOPASellerShare; // unit OPA share for pooler, set when this round closes.
     }
     
     /// @dev added extra round index to all mapping
@@ -86,7 +88,7 @@ contract Option is Context, IOption {
         rounds[r].strikePrice = strikePrice_;
         rounds[r].totalSupply = newSupply;
         rounds[r].balances[_pool] = newSupply;
-        
+
         // set back r to round
         round = r;
     }
@@ -136,15 +138,29 @@ contract Option is Context, IOption {
     /**
      * @dev get round premium share
      */
-    function getRoundPremiumShare(uint r) external view override returns(uint) {
-        return rounds[r].premiumShare;
+    function getRoundAccPremiumShare(uint r) external view override returns(uint) {
+        return rounds[r].accPremiumShare;
     }
     
     /**
      * @dev set round premium share
      */
-    function setRoundPremiumShare(uint r, uint premiumShare) external override onlyPool {
-        rounds[r].premiumShare = premiumShare;
+    function setRoundAccPremiumShare(uint r, uint accPremiumShare) external override onlyPool {
+        rounds[r].accPremiumShare = accPremiumShare;
+    }
+
+    /**
+     * @dev get round seller's OPA share
+     */
+    function getRoundAccOPASellerShare(uint r) external view override returns(uint) {
+        return rounds[r].accOPASellerShare;
+    }
+    
+    /**
+     * @dev set round seller's OPA share
+     */
+    function setRoundAccOPASellerShare(uint r, uint accOPASellerShare) external override onlyPool {
+        rounds[r].accOPASellerShare = accOPASellerShare;
     }
     
     /**
