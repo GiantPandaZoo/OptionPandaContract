@@ -38,7 +38,7 @@ contract Option is Context, IOption {
     
     string private _name;
     string private _symbol;
-    uint8 private _decimals; // @dev option pool doesn't care about decimals, so setting to a fixed 18
+    uint8 private _decimals;
 
     /// @dev option related variables;
     uint private _duration; // the duration of this option, cannot be changed
