@@ -515,97 +515,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             updateSigma();
         }
     }
-
-    /**
-     * @dev function to update sigma value periodically
-     */
-    function updateSigma() internal {
-        // sigma: metrics updates hourly
-        if (_sigmaTotalOptions > 0) {
-            uint16 s = sigma;
-            // update sigma
-            uint rate = _sigmaSoldOptions.mul(100).div(_sigmaTotalOptions);
-            
-            // sigma range [15, 145]
-            if (rate > 90 && s < 145) {
-                s += 5;
-            } else if (rate < 50 && s > 15) {
-                s -= 5;
-            }
-            
-            sigma = s;
-            
-            // log sigma update 
-            emit SigmaUpdate(s, rate);
-        }
-        
-        // new metrics
-        uint sigmaTotalOptions;
-        uint sigmaSoldOptions;
-
-        // create a memory copy of array
-        IOption [] memory options = _options;
-        
-        // rebuild sold/total metrics
-        for (uint i = 0;i< options.length;i++) {
-            // sum all issued options and sold options
-            uint supply = options[i].totalSupply();
-            uint sold = supply.sub(options[i].balanceOf(address(this)));
-            
-            sigmaTotalOptions = sigmaTotalOptions.add(supply);
-            sigmaSoldOptions = sigmaSoldOptions.add(sold);
-        }
-        
-        // set back to contract storage
-        _sigmaTotalOptions = sigmaTotalOptions;
-        _sigmaSoldOptions = sigmaSoldOptions;
-        
-        // set next update time to one hour later
-        _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
-    }
-    
-    /**
-     * @notice adjust sigma manually
-     */
-    function adjustSigma(uint16 newSigma) external override onlyOwner {
-        require (newSigma % 5 == 0, "needs 5*N");
-        require (newSigma >= 15 && newSigma <= 145, "[15,145]");
-        
-        sigma = newSigma;
-        
-        emit SigmaSet(sigma);
-    }
-
-    /**
-     * @notice poolers claim premium USDTs;
-     */
-    function claimPremium() external override whenPoolerNotPaused {
-        // settle un-distributed premiums in rounds to _premiumBalance;
-        _settlePremium(msg.sender);
-
-        // premium balance modification
-        uint amountUSDTPremium = _premiumBalance[msg.sender];
-        _premiumBalance[msg.sender] = 0; // zero premium balance
-        
-        // transfer premium
-        USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
-        
-        // log
-        emit PremiumClaim(msg.sender, amountUSDTPremium);
-    }
-    
-    /**
-     * @notice claim OPA;
-     */
-    function claimOPA() external override whenPoolerNotPaused {
-    }
-    
-    /**
-     * @notice settle premium in rounds while pooler token transfers.
-     */
-    function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
-        _settlePremium(account);
-    }
     
     /**
      * @dev settle option contract
@@ -673,7 +582,116 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // log
         emit SettleLog(option.name(), totalProfits, totalOptionSold);
     }
+
+    /**
+     * @dev function to update sigma value periodically
+     */
+    function updateSigma() internal {
+        // sigma: metrics updates hourly
+        if (_sigmaTotalOptions > 0) {
+            uint16 s = sigma;
+            // update sigma
+            uint rate = _sigmaSoldOptions.mul(100).div(_sigmaTotalOptions);
+            
+            // sigma range [15, 145]
+            if (rate > 90 && s < 145) {
+                s += 5;
+            } else if (rate < 50 && s > 15) {
+                s -= 5;
+            }
+            
+            sigma = s;
+            
+            // log sigma update 
+            emit SigmaUpdate(s, rate);
+        }
+        
+        // new metrics
+        uint sigmaTotalOptions;
+        uint sigmaSoldOptions;
+
+        // create a memory copy of array
+        IOption [] memory options = _options;
+        
+        // rebuild sold/total metrics
+        for (uint i = 0;i< options.length;i++) {
+            // sum all issued options and sold options
+            uint supply = options[i].totalSupply();
+            uint sold = supply.sub(options[i].balanceOf(address(this)));
+            
+            sigmaTotalOptions = sigmaTotalOptions.add(supply);
+            sigmaSoldOptions = sigmaSoldOptions.add(sold);
+        }
+        
+        // set back to contract storage
+        _sigmaTotalOptions = sigmaTotalOptions;
+        _sigmaSoldOptions = sigmaSoldOptions;
+        
+        // set next update time to one hour later
+        _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
+    }
     
+    /**
+     * @notice adjust sigma manually
+     */
+    function adjustSigma(uint16 newSigma) external override onlyOwner {
+        require (newSigma % 5 == 0, "needs 5*N");
+        require (newSigma >= 15 && newSigma <= 145, "[15,145]");
+        
+        sigma = newSigma;
+        
+        emit SigmaSet(sigma);
+    }
+
+    /**
+     * @notice poolers sum premium USDTs;
+     */
+    function checkPremium(address account) external override view returns(uint256 premium) {
+        uint accountCollateral = poolerTokenContract.balanceOf(account);
+
+        premium = _premiumBalance[account];
+
+        for (uint i = 0; i < _options.length; i++) {
+            IOption option = _options[i];
+            uint currentRound = option.getRound();
+            uint lastSettledRound = option.getSettledPremiumRound(account);
+            
+            uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+                                    .mul(accountCollateral)
+                                    .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
+            
+            premium = premium.add(roundPremium);
+        }
+        
+        return (premium);
+    }
+    
+    /**
+     * @notice poolers claim premium USDTs;
+     */
+    function claimPremium() external override whenPoolerNotPaused {
+        // settle un-distributed premiums in rounds to _premiumBalance;
+        _settlePremium(msg.sender);
+
+        // premium balance modification
+        uint amountUSDTPremium = _premiumBalance[msg.sender];
+        _premiumBalance[msg.sender] = 0; // zero premium balance
+        
+        // transfer premium
+        USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
+        
+        // log
+        emit PremiumClaim(msg.sender, amountUSDTPremium);
+    }
+
+    /**
+     * @notice settle premium in rounds while pooler token transfers.
+     */
+    function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
+        _settlePremium(account);
+    }
+    
+
     /**
      * @notice settle premium in rounds to _premiumBalance, 
      * settle premium happens before any pooler token exchange such as ERC20-transfer,mint,burn,
@@ -706,6 +724,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
 
     /**
+     * @notice claim OPA;
+     */
+    function claimOPA() external override whenPoolerNotPaused {
+    }
+    
+    /**
      * @notice net-withdraw amount;
      */
     function NWA() public view override returns (uint) {
@@ -717,49 +741,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // net withdrawable amount
         return collateral.sub(minCollateral);
-    }
-    
-    /**
-     * @notice poolers sum premium USDTs;
-     */
-    function checkPremium(address account) external override view returns(uint256 premium) {
-        uint accountCollateral = poolerTokenContract.balanceOf(account);
-
-        premium = _premiumBalance[account];
-
-        for (uint i = 0; i < _options.length; i++) {
-            IOption option = _options[i];
-            uint currentRound = option.getRound();
-            uint lastSettledRound = option.getSettledPremiumRound(account);
-            
-            uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
-                                    .mul(accountCollateral)
-                                    .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
-            
-            premium = premium.add(roundPremium);
-        }
-        
-        return (premium);
-    }
-    
-    /**
-     * @notice buyers claim option profits
-     */   
-    function claimProfits() external override whenBuyerNotPaused {
-        // settle profits in options
-        for (uint i = 0; i < _options.length; i++) {
-            _settleProfits(_options[i], msg.sender);
-        }
-    
-        // load and clean profits
-        uint256 accountProfits = _profitsBalance[msg.sender];
-        _profitsBalance[msg.sender] = 0;
-        
-        // send profits
-        _sendProfits(msg.sender, accountProfits);
-        
-        // log
-        emit ProfitsClaim(msg.sender, accountProfits);
     }
     
     /**
@@ -794,6 +775,26 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
         
         return amount + _calcProfits(settlePrice, strikePrice, optionAmount);
+    }
+        
+    /**
+     * @notice buyers claim option profits
+     */   
+    function claimProfits() external override whenBuyerNotPaused {
+        // settle profits in options
+        for (uint i = 0; i < _options.length; i++) {
+            _settleProfits(_options[i], msg.sender);
+        }
+    
+        // load and clean profits
+        uint256 accountProfits = _profitsBalance[msg.sender];
+        _profitsBalance[msg.sender] = 0;
+        
+        // send profits
+        _sendProfits(msg.sender, accountProfits);
+        
+        // log
+        emit ProfitsClaim(msg.sender, accountProfits);
     }
     
     /**
