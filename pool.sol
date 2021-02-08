@@ -225,7 +225,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     address public poolManagerContract;     // platform contract
     
-    IERC20 immutable public OPAToken;  // OPA token contract
+    IERC20 public OPAToken;  // OPA token contract
     bool opaTokenOnce;
     
     uint public OPAPerBlock  = 20 * 1e18;
@@ -340,12 +340,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, IERC20 OPAToken_, uint8 numOptions) public {
+    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, uint8 numOptions) public {
         _owner = msg.sender;
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
-        OPAToken = OPAToken_;
         lastOPARewardBlock = block.number;
         utilizationRate = INITIAL_UTILIZATION_RATE;
         maxUtilizationRate = INITIAL_MAX_UTILIZATION_RATE;
