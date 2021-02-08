@@ -582,8 +582,8 @@ interface IOption is IERC20 {
     function getRoundBalanceOf(uint r, address account) external view returns (uint256);
     function getRoundAccPremiumShare(uint r) external view returns(uint);
     function setRoundAccPremiumShare(uint r, uint premiumShare) external;
-    function getUnclaimedProfitsRounds(address account) external view returns (uint[] memory);
-    function clearUnclaimedProfitsRounds(address account) external;
+    function getUnclaimedProfitsRound(address account) external view returns (uint);
+    function clearUnclaimedProfitsRound(address account) external;
     function getSettledPremiumRound(address account) external view returns (uint);
     function setSettledPremiumRound(uint r, address account) external;
     function getRoundAccOPASellerShare(uint r) external view returns(uint);
@@ -614,6 +614,7 @@ interface IOptionPool {
     function pauseBuyer() external;
     function unpauseBuyer() external;
     function settlePremiumByPoolerToken(address account) external;
+    function settleProfitsByOptions(address account) external;
     function update() external;
     function optionsLeft(IOption optionContract) external view returns (uint256 left, uint round);
     function buy(uint amount, IOption optionContract, uint round) external;
@@ -626,7 +627,7 @@ interface IOptionPool {
     function claimOPA() external;
     function claimProfits() external;
     function checkPremium(address account) external view returns (uint256 premium);
-    function checkProfits(address account) external view returns (uint256 profits, uint numRound);
+    function checkProfits(address account) external view returns (uint256 profits);
     function setOption(IOption option) external;
     function setPoolerToken(IPoolerToken poolerToken) external;
     function setPoolManager(address poolManager) external;

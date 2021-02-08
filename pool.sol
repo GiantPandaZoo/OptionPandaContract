@@ -201,6 +201,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
+    mapping (address => uint256) internal _profitsBalance; // tracking buyer's claimable profits
 
     IOption [] internal _options; // all option contracts
     address internal _owner; // owner of this contract
@@ -233,7 +234,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 immutable internal _numOptions;
     
     /**
-     * @dev Modifier to make a function callable only buy owner
+     * @dev Modifier to make a function callable only by owner
      */
     modifier onlyOwner() {
         require(msg.sender == _owner, "restricted");
@@ -241,7 +242,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
     
     /**
-     * @dev Modifier to make a function callable only buy poolerTokenContract
+     * @dev Modifier to make a function callable only by poolerTokenContract
      */
     modifier onlyPoolerTokenContract() {
         require(msg.sender == address(poolerTokenContract), "restricted");
@@ -249,10 +250,26 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
     
     /**
-     * @dev Modifier to make a function callable only buy pool manager
+     * @dev Modifier to make a function callable only by pool manager
      */
     modifier onlyPoolManager() {
         require(msg.sender == address(poolManagerContract), "restricted");
+        _;
+    }
+    
+    /**
+     * @dev Modifier to make a function callable only by options
+     */
+    modifier onlyOptions() {
+        // privilege check
+        bool isFromOption;
+        for (uint i = 0; i < _options.length; i++) {
+            if (address(_options[i]) == msg.sender) {
+                isFromOption = true;
+                break;
+            }
+        }
+        require(isFromOption);
         _;
     }
         
@@ -658,7 +675,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     /**
      * @notice settle premium in rounds to _premiumBalance, 
-     * settle premium happens before any token exchange such as ERC20-transfer,mint,burn,
+     * settle premium happens before any pooler token exchange such as ERC20-transfer,mint,burn,
      * and manually claimPremium;
      * 
      */
@@ -730,22 +747,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice buyers claim option profits
      */   
     function claimProfits() external override whenBuyerNotPaused {
-        uint accountProfits;
-        
-        // create a memory copy of array
-        IOption [] memory options = _options;
-        
-        // sum all profits from all options
-        for (uint i = 0; i < options.length; i++) {
-            IOption option = options[i];
-            
-            // check option profits
-            (uint optionProfits,) = checkOptionProfits(option, msg.sender);
-            accountProfits = accountProfits.add(optionProfits);
-            
-            // clear unclaimed rounds(claimed)
-            option.clearUnclaimedProfitsRounds(msg.sender);
+        // settle profits in options
+        for (uint i = 0; i < _options.length; i++) {
+            _settleProfits(_options[i], msg.sender);
         }
+    
+        // load and clean profits
+        uint256 accountProfits = _profitsBalance[msg.sender];
+        _profitsBalance[msg.sender] = 0;
         
         // send profits
         _sendProfits(msg.sender, accountProfits);
@@ -757,43 +766,68 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice check claimable buyer's profits
      */
-    function checkProfits(address account) external override view returns (uint256 profits, uint numRound) {
+    function checkProfits(address account) external override view returns (uint256 profits) {
         // sum all profits from all options
         for (uint i = 0; i < _options.length; i++) {
-            (uint optionProfits, uint optionRounds) = checkOptionProfits(_options[i], account);
-            profits = profits.add(optionProfits);
-            numRound = numRound.add(optionRounds);
+            profits += checkOptionProfits(_options[i], account);
         }
-        
-        return (profits, numRound);
+        return (profits);
     }
     
     /**
      * @notice check profits in an option
      */
-    function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount, uint numRound) {
-        // get unsettled round 
-        uint unsettledRound = option.getRound();
+    function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount) {
+        amount = _profitsBalance[account];
         
-        // sum all profits from all un-claimed rounds
-        uint [] memory rounds  = option.getUnclaimedProfitsRounds(account);
-        for (uint i=0;i<rounds.length;i++) {
-            // remember to exclude the current unsettled round
-            if (rounds[i] == unsettledRound) {
-                continue;
-            }
-            
-            uint settlePrice = option.getRoundSettlePrice(rounds[i]);
-            uint strikePrice = option.getRoundStrikePrice(rounds[i]);
-            uint optionAmount = option.getRoundBalanceOf(rounds[i], account);
-            
-            // accumulate gain in rounds    
-            amount = amount.add(_calcProfits(settlePrice, strikePrice, optionAmount));
-            
-            // accumulate rounds
-            numRound++;
+        uint unclaimedRound = option.getUnclaimedProfitsRound(account);
+        if (unclaimedRound == 0) {
+            return (amount);
         }
-        return (amount, numRound);
+        
+        if (unclaimedRound == option.getRound()) {
+            return (amount);
+        }
+
+        // accumulate profits in _profitsBalance
+        uint settlePrice = option.getRoundSettlePrice(unclaimedRound);
+        uint strikePrice = option.getRoundStrikePrice(unclaimedRound);
+        uint optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
+        
+        return amount + _calcProfits(settlePrice, strikePrice, optionAmount);
+    }
+    
+    /**
+     * @notice settle profits while option token transfers.
+     */
+    function settleProfitsByOptions(address account) external override onlyOptions {
+        _settleProfits(IOption(msg.sender), account);
+    }
+
+    /**
+     * @notice settle premium in rounds to _premiumBalance, 
+     * settle premium happens before any option token exchange such as ERC20-transfer,mint,burn,
+     * and manually claimProfits;
+     * 
+     */
+    function _settleProfits(IOption option, address account) internal {
+        uint unclaimedRound = option.getUnclaimedProfitsRound(account);
+        if (unclaimedRound == 0) {
+            return;
+        }
+        
+        if (unclaimedRound ==  option.getRound()) {
+            return;
+        }
+
+        // accumulate profits in _profitsBalance
+        uint settlePrice = option.getRoundSettlePrice(unclaimedRound);
+        uint strikePrice = option.getRoundStrikePrice(unclaimedRound);
+        uint optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
+        
+        _profitsBalance[account] += _calcProfits(settlePrice, strikePrice, optionAmount);
+        
+        option.clearUnclaimedProfitsRound(account);
     }
 
     /**

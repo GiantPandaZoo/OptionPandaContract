@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
@@ -28,10 +27,9 @@ contract Option is Context, IOption {
     
     /// @dev added extra round index to all mapping
     mapping (uint => RoundData) private rounds;
-    
-    /// @dev mark buyer's unclaimed rounds of profits.
-    /// the rounds array is always ordered.
-    mapping (address => uint[]) private unclaimedRounds;
+
+    /// @dev buyer's latest unsettled round
+    mapping (address => uint) private unclaimedProfitsRounds;
     
     /// @dev mark pooler's highest settled round of premium.
     mapping (address => uint) private settledPremiumRounds;
@@ -45,10 +43,10 @@ contract Option is Context, IOption {
     /// @dev option related variables;
     uint private _duration; // the duration of this option, cannot be changed
 
-    address immutable private _pool; // pool contract address
+    IOptionPool immutable private _pool; // pool contract address
 
     modifier onlyPool() {
-        require(msg.sender == _pool, "Option: access restricted to owner");
+        require(msg.sender == address(_pool), "Option: access restricted to owner");
         _;
     }
 
@@ -61,7 +59,7 @@ contract Option is Context, IOption {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (string memory name_, uint duration_, uint8 decimals_, address poolContract) public {
+    constructor (string memory name_, uint duration_, uint8 decimals_, IOptionPool poolContract) public {
         _name = name_;
         _symbol = name_;
         _decimals = decimals_;
@@ -87,7 +85,7 @@ contract Option is Context, IOption {
         rounds[r].expiryDate = block.timestamp + _duration;
         rounds[r].strikePrice = strikePrice_;
         rounds[r].totalSupply = newSupply;
-        rounds[r].balances[_pool] = newSupply;
+        rounds[r].balances[address(_pool)] = newSupply;
 
         // set back r to round
         round = r;
@@ -166,28 +164,16 @@ contract Option is Context, IOption {
     /**
      * @dev get all unclaimed profits rounds for account
      */
-    function getUnclaimedProfitsRounds(address account) external override view returns (uint[] memory) {
-        return unclaimedRounds[account];
+    function getUnclaimedProfitsRound(address account) external override view returns (uint) {
+        return unclaimedProfitsRounds[account];
     }
 
     /**
      * @dev clear unclaimed profits round for account
      * @notice current round excluded
      */
-    function clearUnclaimedProfitsRounds(address account) external override onlyPool {
-        if (unclaimedRounds[account].length != 0) {
-            // load the latest round
-            uint lastIndex = unclaimedRounds[account].length - 1;
-            uint lastRound = unclaimedRounds[account][lastIndex];
-            
-            // delete the whole unclaimed array
-            delete unclaimedRounds[account];
-            
-            // keep the unsettled round in unclaimedRounds
-            if (lastRound == round) {
-               unclaimedRounds[account].push(lastRound);
-            }
-        }
+    function clearUnclaimedProfitsRound(address account) external override onlyPool {
+        delete unclaimedProfitsRounds[account];
     }
     
     /**
@@ -258,7 +244,7 @@ contract Option is Context, IOption {
      * @dev Returns the pool of the contract.
      */
     function getPool() public view override returns (address) {
-        return _pool;
+        return address(_pool);
     }
 
     /**
@@ -498,26 +484,18 @@ contract Option is Context, IOption {
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address, address to, uint256 amount) internal {
+    function _beforeTokenTransfer(address from, address to, uint256) internal {
         require(block.timestamp < rounds[round].expiryDate, "option expired");
-        
-        // mark token receipient
-        if (to != address(0) && amount > 0) {
-            _markBuyer(to);    
+
+        // settle profits        
+        if (from != address(0)) {
+            _pool.settleProfitsByOptions(from);
+             unclaimedProfitsRounds[from] = round;
         }
-    }
-    
-    /**
-     * @dev mark a buy of this round
-     */
-    function _markBuyer(address account) internal {
-        if (unclaimedRounds[account].length == 0) {
-            unclaimedRounds[account].push(round);
-        } else {
-            uint lastIndex = unclaimedRounds[account].length - 1;
-            if (unclaimedRounds[account][lastIndex] != round) {
-                unclaimedRounds[account].push(round);
-            }
+        
+        if (to != address(0)) {
+            _pool.settleProfitsByOptions(to);
+            unclaimedProfitsRounds[to] = round;
         }
     }
 }
