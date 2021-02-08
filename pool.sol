@@ -681,17 +681,15 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _settlePremium(address account) internal {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
-        // create a memory copy of array
-        IOption [] memory options = _options;
         uint premiumBalance = _premiumBalance[account];
         
-        for (uint i = 0; i < options.length; i++) {
-            IOption option = options[i];
+        for (uint i = 0; i < _options.length; i++) {
+            IOption option = _options[i];
             
-            uint maxRound = option.getRound();
+            uint currentRound = option.getRound();
             uint lastSettledRound = option.getSettledPremiumRound(account);
             
-            uint roundPremium = option.getRoundAccPremiumShare(maxRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+            uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
 
@@ -699,7 +697,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             premiumBalance = premiumBalance.add(roundPremium);
             
             // mark highest claimed round
-            option.setSettledPremiumRound(maxRound - 1, account);
+            option.setSettledPremiumRound(currentRound - 1, account);
         }
 
         // set back balance to storage
@@ -730,10 +728,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
-            uint maxRound = option.getRound();
+            uint currentRound = option.getRound();
             uint lastSettledRound = option.getSettledPremiumRound(account);
             
-            uint roundPremium = option.getRoundAccPremiumShare(maxRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+            uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
                                     .mul(accountCollateral)
                                     .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
             
