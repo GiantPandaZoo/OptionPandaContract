@@ -226,6 +226,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     address public poolManagerContract;     // platform contract
     
     IERC20 immutable public OPAToken;  // OPA token contract
+    bool opaTokenOnce;
+    
     uint public OPAPerBlock  = 20 * 1e18;
     uint lastOPARewardBlock; // last OPA reward block;
     uint sellerOPAShare; // unit OPA share for pooler, set when this round closes.
@@ -855,7 +857,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
      
     /**
-     * @notice set pool manager once(OPA DAO)
+     * @notice set pool manager once
      */
     function setPoolManager(address poolManager) external override onlyOwner {
         poolManagerContract = poolManager;
@@ -869,6 +871,15 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         require(poolerToken.getPool() == address(this), "owner mismatch");
         poolerTokenContract = poolerToken;
         poolerTokenOnce = true;
+    }
+    
+    /**
+     * @notice set OPA token once
+     */
+    function setOPAToken(IERC20 OPAToken_) external override onlyOwner {
+        require (!opaTokenOnce, "already set");
+        OPAToken = OPAToken_;
+        opaTokenOnce = true;
     }
     
     /**
@@ -914,8 +925,8 @@ contract ETHCallOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract,  IERC20 OPAToken_, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, OPAToken_, numOptions)
+    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { }
 
     /**
@@ -1014,8 +1025,8 @@ contract ERC20CallOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, IERC20 OPAToken_, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, OPAToken_, numOptions)
+    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
              _name = name_;
              AssetContract = AssetContract_;
@@ -1118,8 +1129,8 @@ contract PutOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, IERC20 OPAToken_, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, OPAToken_, numOptions)
+    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
+        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
         public { 
             _name = name_;
             ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);
