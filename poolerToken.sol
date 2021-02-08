@@ -333,11 +333,11 @@ contract PoolerToken is Context, IPoolerToken {
     function _beforeTokenTransfer(address from, address to, uint256) internal {
         // handle premium round settlement before token transfer
         if (from != address(0)) {
-            _pool.settlePremiumByPoolerToken(from);
+            _pool.settlePooler(from);
         }
         
         if (to != address(0)) {
-            _pool.settlePremiumByPoolerToken(to);
+            _pool.settlePooler(to);
         }
     }
 }

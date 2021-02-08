@@ -613,7 +613,7 @@ interface IOptionPool {
     function unpausePooler() external;
     function pauseBuyer() external;
     function unpauseBuyer() external;
-    function settlePremiumByPoolerToken(address account) external;
+    function settlePooler(address account) external;
     function settleProfitsByOptions(address account) external;
     function update() external;
     function optionsLeft(IOption optionContract) external view returns (uint256 left, uint round);

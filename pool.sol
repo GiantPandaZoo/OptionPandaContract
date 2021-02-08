@@ -201,6 +201,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
+    mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
     mapping (address => uint256) internal _profitsBalance; // tracking buyer's claimable profits
 
     IOption [] internal _options; // all option contracts
@@ -671,7 +672,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function claimPremium() external override whenPoolerNotPaused {
         // settle un-distributed premiums in rounds to _premiumBalance;
-        _settlePremium(msg.sender);
+        _settlePooler(msg.sender);
 
         // premium balance modification
         uint amountUSDTPremium = _premiumBalance[msg.sender];
@@ -683,14 +684,28 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // log
         emit PremiumClaim(msg.sender, amountUSDTPremium);
     }
+    
+    /**
+     * @notice claim OPA;
+     */
+    function claimOPA() external override whenPoolerNotPaused {
+        // settle un-distributed OPA in rounds to _opaBalance;
+        _settlePooler(msg.sender);
+
+        // premium balance modification
+        uint amountOPA = _opaBalance[msg.sender];
+        _opaBalance[msg.sender] = 0; // zero premium balance
+        
+        // transfer OPA
+        OPAToken.safeTransfer(msg.sender, amountOPA);
+    }
 
     /**
      * @notice settle premium in rounds while pooler token transfers.
      */
-    function settlePremiumByPoolerToken(address account) external override onlyPoolerTokenContract {
-        _settlePremium(account);
+    function settlePooler(address account) external override onlyPoolerTokenContract {
+        _settlePooler(account);
     }
-    
 
     /**
      * @notice settle premium in rounds to _premiumBalance, 
@@ -698,9 +713,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * and manually claimPremium;
      * 
      */
-    function _settlePremium(address account) internal {
+    function _settlePooler(address account) internal {
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         uint premiumBalance = _premiumBalance[account];
+        uint opaBalance = _opaBalance[account];
         
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
@@ -708,12 +724,19 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             uint currentRound = option.getRound();
             uint lastSettledRound = option.getSettledPremiumRound(account);
             
+            // premium
             uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+                                        .mul(accountCollateral)
+                                        .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
+
+            // OPA                                        
+            uint roundOPA =  option.getRoundAccOPASellerShare(currentRound-1).sub(option.getRoundAccOPASellerShare(lastSettledRound))
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
 
             // add to local balance variable first
             premiumBalance = premiumBalance.add(roundPremium);
+            opaBalance = opaBalance.add(roundOPA);
             
             // mark highest claimed round
             option.setSettledPremiumRound(currentRound - 1, account);
@@ -721,12 +744,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
-    }
-
-    /**
-     * @notice claim OPA;
-     */
-    function claimOPA() external override whenPoolerNotPaused {
+        _opaBalance[account] = opaBalance;
     }
     
     /**
