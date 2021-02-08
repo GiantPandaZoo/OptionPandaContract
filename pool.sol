@@ -549,7 +549,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             
             // 99% belongs to all pooler
             uint premiumShare = totalPremiums.sub(reserve)
-                                .mul(SHARE_MULTIPLIER)      // mul share with SHARE_MULTIPLIER to prevent from underflow
+                                .mul(SHARE_MULTIPLIER)      // mul share with SHARE_MULTIPLIER to avert from underflow
                                 .div(poolerTotalSupply);
                                 
             // set premium share to round for poolers
@@ -984,7 +984,7 @@ contract ETHCallOptionPool is PandaBase {
         if (settlePrice > strikePrice && strikePrice > 0) { 
             // calculate ratio
             uint ratio = settlePrice.sub(strikePrice)
-                                        .mul(1e12)              // mul by 1e12 here to prevent from underflow
+                                        .mul(1e12)              // mul by 1e12 here to avoid underflow
                                         .div(strikePrice);
             
             // calculate ETH gain of this amount
@@ -1095,7 +1095,7 @@ contract ERC20CallOptionPool is PandaBase {
         if (settlePrice > strikePrice && strikePrice > 0) { 
             // calculate ratio
             uint ratio = settlePrice.sub(strikePrice)
-                                    .mul(1e12)          // mul by 1e12 here to prevent from underflow
+                                    .mul(1e12)          // mul by 1e12 here to avoid from underflow
                                     .div(strikePrice);
             
             // calculate Asset gain of this amount
@@ -1207,7 +1207,7 @@ contract PutOptionPool is PandaBase {
         if (settlePrice < strikePrice && strikePrice > 0) {  // put option get profits at this round
             // calculate ratio
             uint ratio = strikePrice.sub(settlePrice)
-                                    .mul(1e12)                  // mul 1e12 to prevent from underflow
+                                    .mul(1e12)                  // mul 1e12 to avoid from underflow
                                     .div(strikePrice);
 
             // holder share
