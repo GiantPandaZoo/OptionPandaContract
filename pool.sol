@@ -222,17 +222,21 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // tracking pooler's collateral with
     // the token contract of the pooler;
     IPoolerToken public poolerTokenContract;
-    bool poolerTokenOnce;
+    bool private poolerTokenOnce;
     
     address public poolManagerContract;     // platform contract
     
     IERC20 public OPAToken;  // OPA token contract
-    bool opaTokenOnce;
+    bool private opaTokenOnce;
     
-    uint public OPAPerBlock  = 20 * 1e18;
-    uint lastOPARewardBlock; // last OPA reward block;
-    uint sellerOPAShare; // unit OPA share for pooler, set when this round closes.
-        
+    /**
+     * OPA Rewarding
+     */
+    uint public OPAPerBlock = 10 * 1e18; // current block reward for pooler
+    uint private immutable startBlock = block.number; // start block for rewarding
+    uint private immutable endBlock = block.number + 5 * 1e6; // end block for rewarding
+    uint private lastRewardBlock = block.number; // last OPA reward block;
+
     // number of options
     uint8 immutable internal _numOptions;
     
@@ -346,7 +350,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
-        lastOPARewardBlock = block.number;
         utilizationRate = INITIAL_UTILIZATION_RATE;
         maxUtilizationRate = INITIAL_MAX_UTILIZATION_RATE;
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
@@ -539,9 +542,15 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // settle preimum dividends
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
         uint totalPremiums = option.totalPremiums();
-        
+        uint round = option.getRound();
+                    
         if (poolerTotalSupply > 0) {
-            uint round = option.getRound();
+            // set premium and OPA share to round for poolers
+            // ASSUMPTION:
+            //  if one pooler's token amount keeps unchanged after settlement, then
+            //      accmulated premiumShare * (pooler token) 
+            //  is the share for one pooler.
+
             // 1% belongs to platform
             uint reserve = totalPremiums.div(100);
                     
@@ -553,20 +562,20 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                                 .mul(SHARE_MULTIPLIER)      // mul share with SHARE_MULTIPLIER to avert from underflow
                                 .div(poolerTotalSupply);
                                 
-            // set premium share to round for poolers
-            // ASSUMPTION:
-            //  if one pooler's token amount keeps unchanged after settlement, then
-            //      accmulated premiumShare * (pooler token) 
-            //  is the share for one pooler.
+
             uint accPremiumShare = premiumShare.add(option.getRoundAccPremiumShare(round-1));
             option.setRoundAccPremiumShare(round, accPremiumShare);
-            
+        }
+        
+        
+        // OPA token rewards in (startBlock, endBlock]
+        if (poolerTotalSupply > 0 && lastRewardBlock < endBlock) {
+            uint blocksToReward = block.number <= endBlock ? 
+                                    block.number.sub(lastRewardBlock) : endBlock - lastRewardBlock;
+
             // OPA share per seller's token setting:
-            // 25% of block OPA reward is dedicated to all Put or Call pooler.
-            uint totalOPA = OPAPerBlock
-                                    .mul(25)
-                                    .mul(block.number.sub(lastOPARewardBlock))
-                                    .div(100);
+            // 50% of block OPA reward is dedicated to all Put or Call pooler.
+            uint totalOPA = OPAPerBlock.mul(blocksToReward);
     
             uint opaSellerShare = totalOPA
                                     .mul(SHARE_MULTIPLIER)
@@ -576,8 +585,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                                     
             option.setRoundAccOPASellerShare(round, accOPASellerShare);
         
-            // reset reward block
-            lastOPARewardBlock = block.number;
+            // mark blocks rewarded;
+            lastRewardBlock += blocksToReward;
         }
         
         // log
@@ -655,7 +664,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
             uint currentRound = option.getRound();
-            uint lastSettledRound = option.getSettledPremiumRound(account);
+            uint lastSettledRound = option.getSettledRound(account);
             
             uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
                                     .mul(accountCollateral)
@@ -683,6 +692,29 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // log
         emit PremiumClaim(msg.sender, amountUSDTPremium);
+    }
+    
+     /**
+     * @notice poolers sum unclaimed OPA;
+     */
+    function checkOPA(address account) external override view returns(uint256 opa) {
+        uint accountCollateral = poolerTokenContract.balanceOf(account);
+
+        opa = _opaBalance[account];
+
+        for (uint i = 0; i < _options.length; i++) {
+            IOption option = _options[i];
+            uint currentRound = option.getRound();
+            uint lastSettledRound = option.getSettledRound(account);
+            
+            uint roundPremium = option.getRoundAccOPASellerShare(currentRound-1).sub(option.getRoundAccOPASellerShare(lastSettledRound))
+                                    .mul(accountCollateral)
+                                    .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
+            
+            opa = opa.add(roundPremium);
+        }
+        
+        return (opa);
     }
     
     /**
@@ -722,24 +754,23 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             IOption option = _options[i];
             
             uint currentRound = option.getRound();
-            uint lastSettledRound = option.getSettledPremiumRound(account);
+            uint lastSettledRound = option.getSettledRound(account);
             
             // premium
             uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
+            premiumBalance = premiumBalance.add(roundPremium);
+
 
             // OPA                                        
             uint roundOPA =  option.getRoundAccOPASellerShare(currentRound-1).sub(option.getRoundAccOPASellerShare(lastSettledRound))
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
-
-            // add to local balance variable first
-            premiumBalance = premiumBalance.add(roundPremium);
             opaBalance = opaBalance.add(roundOPA);
             
             // mark highest claimed round
-            option.setSettledPremiumRound(currentRound - 1, account);
+            option.setSettledRound(currentRound - 1, account);
         }
 
         // set back balance to storage

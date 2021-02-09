@@ -31,8 +31,8 @@ contract Option is Context, IOption {
     /// @dev buyer's latest unsettled round
     mapping (address => uint) private unclaimedProfitsRounds;
     
-    /// @dev mark pooler's highest settled round of premium.
-    mapping (address => uint) private settledPremiumRounds;
+    /// @dev mark pooler's highest settled round for a pooler.
+    mapping (address => uint) private settledRounds;
     
     uint private round; // a monotonic increasing round
     
@@ -177,17 +177,17 @@ contract Option is Context, IOption {
     }
     
     /**
-     * @dev get highest claimed premium round for account
+     * @dev get highest settled round for a pooler
      */
-    function getSettledPremiumRound(address account) external override view returns (uint) {
-        return settledPremiumRounds[account];
+    function getSettledRound(address account) external override view returns (uint) {
+        return settledRounds[account];
     }
 
     /**
-     * @dev set highest claimed premium round for account
+     * @dev set highest settled round for a pooler
      */
-    function setSettledPremiumRound(uint r, address account) external override onlyPool {
-        settledPremiumRounds[account] = r;
+    function setSettledRound(uint r, address account) external override onlyPool {
+        settledRounds[account] = r;
     }
     
     /**

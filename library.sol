@@ -584,8 +584,8 @@ interface IOption is IERC20 {
     function setRoundAccPremiumShare(uint r, uint premiumShare) external;
     function getUnclaimedProfitsRound(address account) external view returns (uint);
     function clearUnclaimedProfitsRound(address account) external;
-    function getSettledPremiumRound(address account) external view returns (uint);
-    function setSettledPremiumRound(uint r, address account) external;
+    function getSettledRound(address account) external view returns (uint);
+    function setSettledRound(uint r, address account) external;
     function getRoundAccOPASellerShare(uint r) external view returns(uint);
     function setRoundAccOPASellerShare(uint r, uint sellerOPAShare) external;
     
@@ -626,6 +626,7 @@ interface IOptionPool {
     function claimPremium() external;
     function claimOPA() external;
     function claimProfits() external;
+    function checkOPA(address account) external view returns(uint256 opa);
     function checkPremium(address account) external view returns (uint256 premium);
     function checkProfits(address account) external view returns (uint256 profits);
     function setOption(IOption option) external;
