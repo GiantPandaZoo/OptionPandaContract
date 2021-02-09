@@ -196,9 +196,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint256 internal constant SHARE_MULTIPLIER = 1e18;
     uint256 internal constant USDT_DECIMALS = 1e6;
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
-    uint16 internal constant INITIAL_SIGMA = 70;
-    uint8 internal constant INITIAL_UTILIZATION_RATE = 50;
-    uint8 internal constant INITIAL_MAX_UTILIZATION_RATE = 75;
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -211,9 +208,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     AggregatorV3Interface public priceFeed; // chainlink price feed
     CDFDataInterface public cdfDataContract; // cdf data contract;
 
-    uint8 public utilizationRate; // utilization rate of the pool in percent
-    uint8 public maxUtilizationRate; // max utilization rate of the pool in percent
-    uint16 public sigma; // current sigma
+    uint8 public utilizationRate = 50; // utilization rate of the pool in percent
+    uint8 public maxUtilizationRate = 75; // max utilization rate of the pool in percent
+    uint16 public sigma = 70; // current sigma
     
     uint private _sigmaSoldOptions;  // sum total options sold in a period
     uint private _sigmaTotalOptions; // sum total options issued
@@ -350,10 +347,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
-        utilizationRate = INITIAL_UTILIZATION_RATE;
-        maxUtilizationRate = INITIAL_MAX_UTILIZATION_RATE;
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
-        sigma = INITIAL_SIGMA;
         _numOptions = numOptions;
     }
 
