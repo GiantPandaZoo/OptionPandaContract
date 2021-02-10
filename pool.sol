@@ -221,7 +221,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     IPoolerToken public poolerTokenContract;
     bool private poolerTokenOnce;
     
-    address public poolManagerContract;     // platform contract
+    address public poolManager;     // platform contract
     
     IERC20 public OPAToken;  // OPA token contract
     bool private opaTokenOnce;
@@ -260,7 +260,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev Modifier to make a function callable only by pool manager
      */
     modifier onlyPoolManager() {
-        require(msg.sender == address(poolManagerContract), "restricted");
+        require(msg.sender == address(poolManager), "restricted");
         _;
     }
     
@@ -521,7 +521,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev settle option contract
      */
     function _settleOption(IOption option, uint settlePrice) internal {
-        require(poolManagerContract!= address(0), "poolmgr not set");
+        require(poolManager!= address(0), "poolmgr not set");
         
         uint totalSupply = option.totalSupply();
         uint strikePrice = option.strikePrice();
@@ -552,7 +552,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             uint reserve = totalPremiums.div(100);
                     
             // transfer manager's premium
-            USDTContract.safeTransfer(poolManagerContract, reserve);
+            USDTContract.safeTransfer(poolManager, reserve);
             
             // 99% belongs to all pooler
             uint premiumShare = totalPremiums.sub(reserve)
@@ -905,8 +905,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice set pool manager once
      */
-    function setPoolManager(address poolManager) external override onlyOwner {
-        poolManagerContract = poolManager;
+    function setPoolManager(address poolManager_) external override onlyOwner {
+        poolManager = poolManager_;
     }
     
     /**
