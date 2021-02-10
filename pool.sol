@@ -551,7 +551,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             // 1% belongs to platform
             uint reserve = totalPremiums.div(100);
                     
-            // transfer OPA holders' premium
+            // transfer manager's premium
             USDTContract.safeTransfer(poolManagerContract, reserve);
             
             // 99% belongs to all pooler
