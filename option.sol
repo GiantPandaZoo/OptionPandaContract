@@ -487,7 +487,7 @@ contract Option is Context, IOption {
     function _beforeTokenTransfer(address from, address to, uint256) internal {
         require(block.timestamp < rounds[round].expiryDate, "option expired");
 
-        // settle profits, omit settlement if it's _pool address.
+        // settle buyers' profits, omit settlement if it's _pool address.
         if (from != address(0) && from != address(_pool)) {
             _pool.settleProfitsByOptions(from);
              unclaimedProfitsRounds[from] = round;

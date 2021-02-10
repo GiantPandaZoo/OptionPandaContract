@@ -331,12 +331,12 @@ contract PoolerToken is Context, IPoolerToken {
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _beforeTokenTransfer(address from, address to, uint256) internal {
-        // handle premium round settlement before token transfer
-        if (from != address(0)) {
+        // settle poolers' profits, omit settlement if it's _pool address.
+        if (from != address(0) && from != address(_pool)) {
             _pool.settlePooler(from);
         }
         
-        if (to != address(0)) {
+        if (to != address(0) && to != address(_pool)) {
             _pool.settlePooler(to);
         }
     }
