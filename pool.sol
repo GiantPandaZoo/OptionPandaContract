@@ -231,7 +231,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     uint public OPAPerBlock = 10 * 1e18; // current block reward for pooler
     uint private immutable startBlock = block.number; // start block for rewarding
-    uint private immutable endBlock = block.number + 5 * 1e6; // end block for rewarding
+    
+    // end block for rewarding
+    // total 80% of 250 million OPA, each block mints 20 OPA
+    uint private immutable endBlock = block.number + (250000000 * 80 / 100 / 20) ;
     uint private lastRewardBlock = block.number; // last OPA reward block;
 
     // number of options
