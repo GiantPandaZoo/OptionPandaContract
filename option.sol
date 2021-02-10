@@ -169,11 +169,10 @@ contract Option is Context, IOption {
     }
 
     /**
-     * @dev clear unclaimed profits round for account
-     * @notice current round excluded
+     * @dev set unclaimed profits round for account
      */
-    function clearUnclaimedProfitsRound(address account) external override onlyPool {
-        delete unclaimedProfitsRounds[account];
+    function setUnclaimedProfitsRound(uint r, address account) external override onlyPool {
+        unclaimedProfitsRounds[account] = r;
     }
     
     /**

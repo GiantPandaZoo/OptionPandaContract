@@ -805,12 +805,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount) {
         amount = _profitsBalance[account];
-        
+
         uint unclaimedRound = option.getUnclaimedProfitsRound(account);
-        if (unclaimedRound == 0) {
-            return (amount);
-        }
-        
         if (unclaimedRound == option.getRound()) {
             return (amount);
         }
@@ -858,11 +854,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _settleProfits(IOption option, address account) internal {
         uint unclaimedRound = option.getUnclaimedProfitsRound(account);
-        if (unclaimedRound == 0) {
-            return;
-        }
+        uint currentRound = option.getRound();
         
-        if (unclaimedRound ==  option.getRound()) {
+        // current round is always unsettled
+        if (unclaimedRound == currentRound) {
             return;
         }
 
@@ -873,7 +868,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         _profitsBalance[account] += _calcProfits(settlePrice, strikePrice, optionAmount);
         
-        option.clearUnclaimedProfitsRound(account);
+        // set current round unclaimed
+        option.setUnclaimedProfitsRound(currentRound, account);
     }
 
     /**

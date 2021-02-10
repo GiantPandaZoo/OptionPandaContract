@@ -583,7 +583,7 @@ interface IOption is IERC20 {
     function getRoundAccPremiumShare(uint r) external view returns(uint);
     function setRoundAccPremiumShare(uint r, uint premiumShare) external;
     function getUnclaimedProfitsRound(address account) external view returns (uint);
-    function clearUnclaimedProfitsRound(address account) external;
+    function setUnclaimedProfitsRound(uint r, address account) external;
     function getSettledRound(address account) external view returns (uint);
     function setSettledRound(uint r, address account) external;
     function getRoundAccOPASellerShare(uint r) external view returns(uint);
