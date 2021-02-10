@@ -21,8 +21,8 @@ contract Option is Context, IOption {
         uint settlePrice;
         
         uint totalPremiums; // pooler's shared premium at this round
-        uint accPremiumShare; // unit premium be calc & set in settlement for pooler
-        uint accOPASellerShare; // unit OPA share for pooler, set when this round closes.
+        uint accPremiumShare; // accumulated premium share for a pooler
+        uint accOPASellerShare; // accmulated OPA share for pooler
     }
     
     /// @dev added extra round index to all mapping
