@@ -20,7 +20,7 @@ contract Option is Context, IOption {
         uint strikePrice;
         uint settlePrice;
         
-        uint totalPremiums; // pooler's shared premium at this round
+        uint totalPremiums; // total premium in this round
         uint accPremiumShare; // accumulated premium share for a pooler
         uint accOPASellerShare; // accmulated OPA share for pooler
     }
@@ -34,7 +34,7 @@ contract Option is Context, IOption {
     /// @dev mark pooler's highest settled round for a pooler.
     mapping (address => uint) private settledRounds;
     
-    uint private round; // a monotonic increasing round
+    uint private currentRound; // a monotonic increasing round
     
     string private _name;
     string private _symbol;
@@ -74,7 +74,7 @@ contract Option is Context, IOption {
      */
     function resetOption(uint strikePrice_, uint newSupply) external override onlyPool {
         // create a memory copy of round;
-        uint r = round;
+        uint r = currentRound;
         // record settle price
         rounds[r].settlePrice = strikePrice_;
         
@@ -88,7 +88,7 @@ contract Option is Context, IOption {
         rounds[r].balances[address(_pool)] = newSupply;
 
         // set back r to round
-        round = r;
+        currentRound = r;
     }
 
     /**
@@ -194,35 +194,35 @@ contract Option is Context, IOption {
      * @dev add premium fee to current round in USDT
      */
     function addPremium(uint256 amountUSDT) external override onlyPool {
-        rounds[round].totalPremiums += amountUSDT;
+        rounds[currentRound].totalPremiums += amountUSDT;
     }
     
     /**
      * @dev total premium fee in current round.
      */
     function totalPremiums() external override view returns (uint) {
-        return rounds[round].totalPremiums;
+        return rounds[currentRound].totalPremiums;
     }
     
    /**
      * @dev add premium fee in USDT
      */
     function getRound() external override view returns (uint) {
-        return round;
+        return currentRound;
     }
     
     /**
      * @dev returns expiry date for current round
      */
     function expiryDate() external override view returns (uint) {
-        return rounds[round].expiryDate;
+        return rounds[currentRound].expiryDate;
     }
     
     /**
      * @dev returns strike price for current round
      */
     function strikePrice() external override view returns (uint) {
-        return rounds[round].strikePrice;
+        return rounds[currentRound].strikePrice;
     }
     
     /**
@@ -275,14 +275,14 @@ contract Option is Context, IOption {
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view override returns (uint256) {
-        return rounds[round].totalSupply;
+        return rounds[currentRound].totalSupply;
     }
 
     /**
      * @dev See {IERC20-balanceOf}.
      */
     function balanceOf(address account) public view override returns (uint256) {
-        return rounds[round].balances[account];
+        return rounds[currentRound].balances[account];
     }
 
     /**
@@ -302,7 +302,7 @@ contract Option is Context, IOption {
      * @dev See {IERC20-allowance}.
      */
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        return rounds[round].allowances[owner][spender];
+        return rounds[currentRound].allowances[owner][spender];
     }
 
     /**
@@ -332,7 +332,7 @@ contract Option is Context, IOption {
      */
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), rounds[round].allowances[sender][_msgSender()].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        _approve(sender, _msgSender(), rounds[currentRound].allowances[sender][_msgSender()].sub(amount, "ERC20: transfer amount exceeds allowance"));
         return true;
     }
 
@@ -349,7 +349,7 @@ contract Option is Context, IOption {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, rounds[round].allowances[_msgSender()][spender].add(addedValue));
+        _approve(_msgSender(), spender, rounds[currentRound].allowances[_msgSender()][spender].add(addedValue));
         return true;
     }
 
@@ -368,7 +368,7 @@ contract Option is Context, IOption {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, rounds[round].allowances[_msgSender()][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
+        _approve(_msgSender(), spender, rounds[currentRound].allowances[_msgSender()][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
         return true;
     }
 
@@ -392,8 +392,8 @@ contract Option is Context, IOption {
 
         _beforeTokenTransfer(sender, recipient, amount);
 
-        rounds[round].balances[sender] = rounds[round].balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
-        rounds[round].balances[recipient] = rounds[round].balances[recipient].add(amount);
+        rounds[currentRound].balances[sender] = rounds[currentRound].balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
+        rounds[currentRound].balances[recipient] = rounds[currentRound].balances[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);
     }
@@ -412,8 +412,8 @@ contract Option is Context, IOption {
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        rounds[round].totalSupply = rounds[round].totalSupply.add(amount);
-        rounds[round].balances[account] = rounds[round].balances[account].add(amount);
+        rounds[currentRound].totalSupply = rounds[currentRound].totalSupply.add(amount);
+        rounds[currentRound].balances[account] = rounds[currentRound].balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
 
@@ -433,8 +433,8 @@ contract Option is Context, IOption {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        rounds[round].totalSupply = rounds[round].totalSupply.sub(amount);
-        rounds[round].balances[account] = rounds[round].balances[account].sub(amount, "ERC20: burn amount exceeds balance");
+        rounds[currentRound].totalSupply = rounds[currentRound].totalSupply.sub(amount);
+        rounds[currentRound].balances[account] = rounds[currentRound].balances[account].sub(amount, "ERC20: burn amount exceeds balance");
         emit Transfer(account, address(0), amount);
     }
 
@@ -455,7 +455,7 @@ contract Option is Context, IOption {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
-        rounds[round].allowances[owner][spender] = amount;
+        rounds[currentRound].allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
 
@@ -485,17 +485,17 @@ contract Option is Context, IOption {
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _beforeTokenTransfer(address from, address to, uint256) internal {
-        require(block.timestamp < rounds[round].expiryDate, "option expired");
+        require(block.timestamp < rounds[currentRound].expiryDate, "option expired");
 
         // settle buyers' profits, omit settlement if it's _pool address.
         if (from != address(0) && from != address(_pool)) {
             _pool.settleProfitsByOptions(from);
-             unclaimedProfitsRounds[from] = round;
+             unclaimedProfitsRounds[from] = currentRound;
         }
         
         if (to != address(0) && to != address(_pool)) {
             _pool.settleProfitsByOptions(to);
-            unclaimedProfitsRounds[to] = round;
+            unclaimedProfitsRounds[to] = currentRound;
         }
     }
 }
