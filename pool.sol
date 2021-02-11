@@ -789,7 +789,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice settle profits while option token transfers.
      */
-    function settleProfitsByOptions(address account) external override onlyOptions {
+    function settleBuyer(address account) external override onlyOptions {
         _settleProfits(IOption(msg.sender), account);
     }
 
