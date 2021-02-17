@@ -141,8 +141,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint public collateral; // collaterals in this pool
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18;
-    uint256 internal constant USDT_DECIMALS = 1e6;
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
+    uint256 internal immutable USDT_DECIMALS; // @notice MODIFIES this to different blockchain
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -299,6 +299,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         cdfDataContract = cdfDataContract_;
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
         _numOptions = numOptions;
+        USDT_DECIMALS = 10 ** uint256(USDTContract_.decimals());
     }
 
     /**
@@ -905,11 +906,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 }
 
 /**
- * @title Implementation of ETH Call Option Pool
- * ETHCallOptionPool Call Option Pool use Ethers as collateral and bets
+ * @title Implementation of Native Call Option Pool
+ * NativeCallOptionPool Call Option Pool use native tokens as collateral and bets
  * on Chainlink Oralce Price Feed.
  */
-contract ETHCallOptionPool is PandaBase {
+contract NativeCallOptionPool is PandaBase {
     /**
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
@@ -922,13 +923,13 @@ contract ETHCallOptionPool is PandaBase {
      * @dev Returns the pool of the contract.
      */
     function name() public pure returns (string memory) {
-        return "ETH CALL POOL";
+        return "NATIVE CALL POOL";
     }
 
     /**
      * @notice deposit ethers to this pool directly.
      */
-    function depositETH() external whenPoolerNotPaused payable {
+    function deposit() external whenPoolerNotPaused payable {
         require(msg.value > 0, "0 value");
         poolerTokenContract.mint(msg.sender, msg.value);
         collateral = collateral.add(msg.value);
@@ -940,20 +941,20 @@ contract ETHCallOptionPool is PandaBase {
     /**
      * @notice withdraw the pooled ethers;
      */
-    function withdrawETH(uint amountETH) external whenPoolerNotPaused {
-        require (amountETH <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
-        require (amountETH <= NWA(), "collateral exceeded");
+    function withdraw(uint amount) external whenPoolerNotPaused {
+        require (amount <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
+        require (amount <= NWA(), "collateral exceeded");
 
         // burn pooler token
-        poolerTokenContract.burn(msg.sender, amountETH);
+        poolerTokenContract.burn(msg.sender, amount);
         // substract collateral
-        collateral = collateral.sub(amountETH);
+        collateral = collateral.sub(amount);
 
         // transfer ETH to msg.sender
-        msg.sender.sendValue(amountETH);
+        msg.sender.sendValue(amount);
         
         // log 
-        emit Withdraw(msg.sender, amountETH);
+        emit Withdraw(msg.sender, amount);
     }
         
     /**
