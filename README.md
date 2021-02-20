@@ -9,20 +9,24 @@ Option Panda has many advantages against other option trading platforms.
 * Dynamic Sigma Adjustment: Option Panda employs a novel dynamic adjustment mechanism based on market supply/demand to achieve a relatively frequent update of the implied volatility in the option pricing formula, which we call it Dynamic Sigma Adjustment. It is designed this way so that the frequent, market oriented Sigma(volatility) adjustment could reflect the market supply/demand trend and achieve a practically fair option pricing for both the buy and sell parties. 
 * Community Driven: Option Panda plans to gradually transfer the governance ownership to the community, and let platform tokens holders to decide it's roadmap. That means Option Panda will have a decentralized governance mechanism.
 
-1. Basic Features
+**1. Basic Features**
+
 Option Panda allows option underwriting and trading in a decentralized setting.  
 
 Option buyers simply buy a call/put option on the platform, waiting for its settlement for prospective profit; option sellers simply deposit underlying asset to a pool to participate in a pooled option underwriting, collecting premiums paid by option buyers.
 
-2. Options Pricing
+**2. Options Pricing**
+
 Option Panda only generates ATM options. And we use a nice and delicate Black-Scholes model, combined with a Dynamic Sigma Adjustment mechanism to achieve real-time computation of option price. For more information, please refer to the User Manual:
 
 https://optionpanda.gitbook.io/option-panda-user-manual/untitled/13.-how-the-price-that-i-have-to-pay-to-buy-an-option-is-determined-by-option-panda
 
-3. Option Underwriting Mechanism
+**3. Option Underwriting Mechanism**
+
 Option Panda adopts an auction-like option offering mechanism. Every cycle, after the old option expires, new option with the same expiry duration will be generated with a fixed offering amount. This offering amount is calculated based on the availability of underwriting pool at that moment. Buyers are able to purchase the option until the upper limit is hit.
 
-4. Options Settlement
+**4. Options Settlement**
+
 Option Panda automatically settles expiring options and updates new option offerings according to transparent rules. Option holders don't have to tower-watch and manually exercise their holdings through smart contract interaction. 
 
 All the above feature are running on Ethereum smart contract. Try it out!
