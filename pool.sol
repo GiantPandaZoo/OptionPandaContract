@@ -226,6 +226,16 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         require(isFromOption);
         _;
     }
+    
+    /**
+     * @dev buyers try to update
+     */
+    modifier tryUpdate() {
+        if (block.timestamp > getNextUpdateTime()) {
+            update();
+        }
+        _;
+    }
         
     /**
      * @dev deposit event
@@ -336,7 +346,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice buy options via USDT, pool receive premium
      */
-    function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused {
+    function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused tryUpdate {
         // check option expiry
         require(block.timestamp < optionContract.expiryDate(), "expired");
         // check if option current round is the given round
@@ -408,7 +418,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice get next update time
      */
-    function getNextUpdateTime() external override view returns (uint) {
+    function getNextUpdateTime() public override view returns (uint) {
         uint nextUpdateTime =_nextSigmaUpdate;
         
         for (uint i = 0;i< _options.length;i++) {
