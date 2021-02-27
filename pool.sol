@@ -783,7 +783,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     function claimProfits() external override whenBuyerNotPaused {
         // settle profits in options
         for (uint i = 0; i < _options.length; i++) {
-            _settleProfits(_options[i], msg.sender);
+            _settleBuyer(_options[i], msg.sender);
         }
     
         // load and clean profits
@@ -801,7 +801,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice settle profits while option token transfers.
      */
     function settleBuyer(address account) external override onlyOptions {
-        _settleProfits(IOption(msg.sender), account);
+        _settleBuyer(IOption(msg.sender), account);
     }
 
     /**
@@ -810,7 +810,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * and manually claimProfits;
      * 
      */
-    function _settleProfits(IOption option, address account) internal {
+    function _settleBuyer(IOption option, address account) internal {
         uint unclaimedRound = option.getUnclaimedProfitsRound(account);
         uint currentRound = option.getRound();
         
