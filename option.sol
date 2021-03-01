@@ -489,12 +489,10 @@ contract Option is Context, IOption {
         // settle buyers' profits, omit settlement if it's _pool address.
         if (from != address(0) && from != address(_pool)) {
             _pool.settleBuyer(from);
-             unclaimedProfitsRounds[from] = currentRound;
         }
         
         if (to != address(0) && to != address(_pool)) {
             _pool.settleBuyer(to);
-            unclaimedProfitsRounds[to] = currentRound;
         }
     }
 }
