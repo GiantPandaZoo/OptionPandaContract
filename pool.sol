@@ -140,9 +140,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     uint public collateral; // collaterals in this pool
     
-    uint256 internal constant SHARE_MULTIPLIER = 1e18;
-    uint256 internal constant SIGMA_UPDATE_PERIOD = 3600;
-    uint256 internal immutable USDT_DECIMALS; // @notice MODIFIES this to different blockchain
+    uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
+    uint256 internal constant SIGMA_UPDATE_PERIOD = 3600; // sigma update period
+    uint256 internal immutable USDT_DECIMALS; // USDT decimals in exponent set in constructor
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
