@@ -10,7 +10,7 @@ import "poolerToken.sol";
  * @title A factory to create new Option
  * OptionFactory
  */
-contract PandaFactor is IPandaFactory {
+contract PandaFactory is IPandaFactory {
     address private _cdfContract; // cdf data contract;
     address private _usdtContract;
     
