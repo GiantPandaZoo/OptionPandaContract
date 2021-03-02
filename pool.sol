@@ -315,7 +315,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         _owner = msg.sender;
         priceFeed = priceFeed_;
         USDTContract = IERC20(pandaFactory.getUSDTContract());
-        cdfDataContract = (CDFDataInterface)(pandaFactory.getCDF());
+        cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
         USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
     }
