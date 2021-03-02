@@ -27,11 +27,11 @@ contract PandaFactory is IPandaFactory {
         return new PoolerToken(decimals_, poolContract);
     }
     
-    function getCDF() external override returns(address) {
+    function getCDF() external view override returns(address) {
         return _cdfContract;
     }
 
-    function getUSDTContract() external override returns(address) {
+    function getUSDTContract() external view override returns(address) {
         return _usdtContract;
     }
 }
