@@ -146,14 +146,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     //IPandaFactory public constant pandaFactory = IPandaFactory(0x2098b60f2847BC8E907f894a93244B7fFF8Cb5ed);
     
     // BSC
-    IPandaFactory public constant pandaFactory = IPandaFactory(0xa11E7d2beD9aE2F6eFCB208EeAD9db8Ffb173561); 
+    IPandaFactory public constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
     
     
     uint public collateral; // collaterals in this pool
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600; // sigma update period
-    uint256 internal immutable USDT_DECIMALS; // USDT decimals in exponent set in constructor
+    uint256 internal USDT_DECIMALS; // USDT decimals in exponent set in constructor
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -314,10 +314,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     constructor(AggregatorV3Interface priceFeed_) public {
         _owner = msg.sender;
         priceFeed = priceFeed_;
-        USDTContract = IERC20(pandaFactory.getUSDTContract());
-        cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
+     
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
-        USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
     }
     
     /**
@@ -326,6 +324,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     function init() public onlyOwner {
         require(!inited, "inited");
         inited = true;
+        
+        // contract references
+        USDTContract = IERC20(pandaFactory.getUSDTContract());
+        USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
+        cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
+
         // creation of options
         _options.push(pandaFactory.createOption(300, 18, IOptionPool(this)));
         _options.push(pandaFactory.createOption(900, 18, IOptionPool(this)));
