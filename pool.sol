@@ -140,13 +140,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     using Address for address payable;
     
     /**
-     * option creation factory, set this based on blockchain
+     * @dev option creation factory, set this based on blockchain
+     * constructor will fail if the address is illegal.
      */
     // rinkeby
-    IPandaFactory public constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
     
     // BSC
-    //IPandaFactory public constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
+    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
     
     
     uint public collateral; // collaterals in this pool
