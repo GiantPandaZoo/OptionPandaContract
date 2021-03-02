@@ -162,7 +162,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     IOption [] internal _options; // all option contracts
     address internal _owner; // owner of this contract
 
-    IERC20 immutable public USDTContract; // USDT asset contract address
+    IERC20 public USDTContract; // USDT asset contract address
     AggregatorV3Interface public priceFeed; // chainlink price feed
     CDFDataInterface public cdfDataContract; // cdf data contract;
 
@@ -311,15 +311,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_) public {
+    constructor(AggregatorV3Interface priceFeed_) public {
         _owner = msg.sender;
-        USDTContract = USDTContract_;
         priceFeed = priceFeed_;
-        cdfDataContract = cdfDataContract_;
+        USDTContract = IERC20(pandaFactory.getUSDTContract());
+        cdfDataContract = (CDFDataInterface)(pandaFactory.getCDF());
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
-        USDT_DECIMALS = 10 ** uint256(USDTContract_.decimals());
+        USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
     }
-    
     
     /**
      * @dev Option initialization function.
@@ -915,11 +914,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 contract NativeCallOptionPool is PandaBase {
     string private _name;
     /**
-     * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract)
-        PandaBase(USDTContract, priceFeed, cdfContract)
+    constructor(string memory name_, AggregatorV3Interface priceFeed)
+        PandaBase(priceFeed)
         public {
             _name = name_;
         }
@@ -1017,11 +1015,10 @@ contract ERC20CallOptionPool is PandaBase {
     IERC20 public AssetContract;
 
     /**
-     * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract)
-        PandaBase(USDTContract, priceFeed, cdfContract)
+    constructor(string memory name_, IERC20 AssetContract_, AggregatorV3Interface priceFeed)
+        PandaBase(priceFeed)
         public { 
              _name = name_;
              AssetContract = AssetContract_;
@@ -1121,11 +1118,10 @@ contract PutOptionPool is PandaBase {
     uint private immutable ASSET_PRICE_UNIT;
     
     /**
-     * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract)
-        PandaBase(USDTContract, priceFeed, cdfContract)
+    constructor(string memory name_, uint8 assetDecimal, AggregatorV3Interface priceFeed)
+        PandaBase(priceFeed)
         public { 
             _name = name_;
             ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);

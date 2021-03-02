@@ -641,4 +641,6 @@ interface IOptionPool {
 interface IPandaFactory {
     function createOption(uint duration_, uint8 decimals_, IOptionPool poolContract) external returns (IOption option);
     function createPoolerToken(uint8 decimals_, IOptionPool poolContract) external returns (IPoolerToken poolerToken);
+    function getCDF() external returns(address);
+    function getUSDTContract() external returns(address);
 }
