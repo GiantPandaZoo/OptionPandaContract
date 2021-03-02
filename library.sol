@@ -607,6 +607,7 @@ interface IPoolerToken is IERC20 {
 }
 
 interface IOptionPool {
+    function name() external view returns (string memory);
     function owner() external view returns (address);
     function transferOwnership(address newOwner) external;
     function pausePooler() external;
@@ -629,11 +630,15 @@ interface IOptionPool {
     function checkOPA(address account) external view returns(uint256 opa);
     function checkPremium(address account) external view returns (uint256 premium);
     function checkProfits(address account) external view returns (uint256 profits);
-    function setOption(IOption option) external;
-    function setPoolerToken(IPoolerToken poolerToken) external;
     function setOPAToken(IERC20 OPAToken_) external;
     function setPoolManager(address poolManager) external;
     function setUtilizationRate(uint8 rate) external;
     function setMaxUtilizationRate(uint8 maxrate) external;
     function getNextUpdateTime() external view returns (uint);
+}
+
+
+interface IPandaFactory {
+    function createOption(uint duration_, uint8 decimals_, IOptionPool poolContract) external returns (IOption option);
+    function createPoolerToken(uint8 decimals_, IOptionPool poolContract) external returns (IPoolerToken poolerToken);
 }
