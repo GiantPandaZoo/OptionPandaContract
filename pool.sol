@@ -143,10 +143,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * option creation factory, set this based on blockchain
      */
     // rinkeby
-    //IPandaFactory public constant pandaFactory = IPandaFactory(0x2098b60f2847BC8E907f894a93244B7fFF8Cb5ed);
+    IPandaFactory public constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
     
     // BSC
-    IPandaFactory public constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
+    //IPandaFactory public constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
     
     
     uint public collateral; // collaterals in this pool
@@ -314,7 +314,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     constructor(AggregatorV3Interface priceFeed_) public {
         _owner = msg.sender;
         priceFeed = priceFeed_;
-     
+             
+        // contract references
+        USDTContract = IERC20(pandaFactory.getUSDTContract());
+        USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
+        cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
+
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
     }
     
@@ -324,11 +329,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     function init() public onlyOwner {
         require(!inited, "inited");
         inited = true;
-        
-        // contract references
-        USDTContract = IERC20(pandaFactory.getUSDTContract());
-        USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
-        cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
 
         // creation of options
         _options.push(pandaFactory.createOption(300, 18, IOptionPool(this)));
