@@ -142,7 +142,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * option creation factory, set this based on blockchain
      */
-    IPandaFactory public constant pandaFactory = IPandaFactory(0x2098b60f2847BC8E907f894a93244B7fFF8Cb5ed);
+    // rinkeby
+    //IPandaFactory public constant pandaFactory = IPandaFactory(0x2098b60f2847BC8E907f894a93244B7fFF8Cb5ed);
+    
+    // BSC
+    IPandaFactory public constant pandaFactory = IPandaFactory(0xa11E7d2beD9aE2F6eFCB208EeAD9db8Ffb173561); 
+    
     
     uint public collateral; // collaterals in this pool
     
