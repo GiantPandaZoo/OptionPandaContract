@@ -129,6 +129,7 @@ contract PausablePool is Context{
     }
 }
 
+
 /**
  * @title base contract for option pool
  */
@@ -137,6 +138,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     using SafeERC20 for IOption;
     using SafeMath for uint;
     using Address for address payable;
+    
+    /**
+     * option creation factory, set this based on blockchain
+     */
+    IPandaFactory public constant pandaFactory = IPandaFactory(0x2098b60f2847BC8E907f894a93244B7fFF8Cb5ed);
     
     uint public collateral; // collaterals in this pool
     
@@ -166,12 +172,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // tracking pooler's collateral with
     // the token contract of the pooler;
     IPoolerToken public poolerTokenContract;
-    bool private poolerTokenOnce;
-    
     address public poolManager;     // platform contract
     
     IERC20 public OPAToken;  // OPA token contract
     bool private opaTokenOnce;
+    
+    // initialization once
+    bool private inited;
     
     /**
      * OPA Rewarding
@@ -184,9 +191,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint private immutable endBlock = block.number + (250000000 * 80 / 100 / 20) ;
     uint private lastRewardBlock = block.number; // last OPA reward block;
 
-    // number of options
-    uint8 immutable internal _numOptions;
-    
     /**
      * @dev Modifier to make a function callable only by owner
      */
@@ -266,7 +270,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev Profits Claiming log
      */
      event ProfitsClaim(address indexed account, uint amount);
-     
+
     /**
      * @dev Premium Claiming log
      */
@@ -302,14 +306,31 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_, uint8 numOptions) public {
+    constructor(IERC20 USDTContract_, AggregatorV3Interface priceFeed_, CDFDataInterface cdfDataContract_) public {
         _owner = msg.sender;
         USDTContract = USDTContract_;
         priceFeed = priceFeed_;
         cdfDataContract = cdfDataContract_;
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
-        _numOptions = numOptions;
         USDT_DECIMALS = 10 ** uint256(USDTContract_.decimals());
+    }
+    
+    
+    /**
+     * @dev Option initialization function.
+     */
+    function init() public onlyOwner {
+        require(!inited, "inited");
+        inited = true;
+        // creation of options
+        _options.push(pandaFactory.createOption(300, 18, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(900, 18, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(1800, 18, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(2700, 18, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(3600, 18, IOptionPool(this)));
+        
+        // creation of pooler token
+        poolerTokenContract = pandaFactory.createPoolerToken(18, IOptionPool(this));
     }
 
     /**
@@ -822,55 +843,21 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // accumulate profits in _profitsBalance
         uint settlePrice = option.getRoundSettlePrice(unclaimedRound);
         uint strikePrice = option.getRoundStrikePrice(unclaimedRound);
-        uint optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
+        uint256 optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
+        uint256 profits = _calcProfits(settlePrice, strikePrice, optionAmount);
         
-        _profitsBalance[account] += _calcProfits(settlePrice, strikePrice, optionAmount);
+        // add profits to balance;
+        _profitsBalance[account] += profits;
         
         // set current round unclaimed
         option.setUnclaimedProfitsRound(currentRound, account);
     }
 
     /**
-     * @notice set new option contract to option pool with different duration
-     */
-    function setOption(IOption option) external override onlyOwner {
-        require(_options.length <= _numOptions, "options exceeded");
-        require(option.getDuration() > 0, "duration is 0");
-        require(option.totalSupply() == 0, "totalSupply != 0");
-        require(option.getPool() == address(this), "owner mismatch");
-        
-        // the duration must be in the set
-        bool durationValid;
-        for (uint i=0;i<cdfDataContract.numDurations();i++) {
-            if (option.getDuration() == cdfDataContract.Durations(i)) {
-                durationValid = true;
-                break;
-            }
-        }
-        require (durationValid, "duration invalid");
-
-        // the option must not be set more than once
-        for (uint i = 0;i< _options.length;i++) {
-            require(_options[i] != option, "duplicated");
-        }
-        _options.push(option);
-    }
-     
-    /**
      * @notice set pool manager once
      */
     function setPoolManager(address poolManager_) external override onlyOwner {
         poolManager = poolManager_;
-    }
-    
-    /**
-     * @notice set pooler token once
-     */
-    function setPoolerToken(IPoolerToken poolerToken) external override onlyOwner {
-        require (!poolerTokenOnce, "already set");
-        require(poolerToken.getPool() == address(this), "owner mismatch");
-        poolerTokenContract = poolerToken;
-        poolerTokenOnce = true;
     }
     
     /**
@@ -921,19 +908,22 @@ abstract contract PandaBase is IOptionPool, PausablePool{
  * on Chainlink Oralce Price Feed.
  */
 contract NativeCallOptionPool is PandaBase {
+    string private _name;
     /**
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
-        public { }
+    constructor(string memory name_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract)
+        PandaBase(USDTContract, priceFeed, cdfContract)
+        public {
+            _name = name_;
+        }
 
     /**
      * @dev Returns the pool of the contract.
      */
-    function name() public pure returns (string memory) {
-        return "NATIVE CALL POOL";
+    function name() public view override returns (string memory) {
+        return _name;
     }
 
     /**
@@ -1008,7 +998,7 @@ contract NativeCallOptionPool is PandaBase {
     function _slotSupply(uint) internal view override returns(uint) {
         return collateral.mul(utilizationRate)
                             .div(100)
-                            .div(_numOptions);
+                            .div(_options.length);
     }
 }
 
@@ -1025,8 +1015,8 @@ contract ERC20CallOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
+    constructor(string memory name_, IERC20 AssetContract_, IERC20 USDTContract,  AggregatorV3Interface priceFeed, CDFDataInterface cdfContract)
+        PandaBase(USDTContract, priceFeed, cdfContract)
         public { 
              _name = name_;
              AssetContract = AssetContract_;
@@ -1035,7 +1025,7 @@ contract ERC20CallOptionPool is PandaBase {
     /**
      * @dev Returns the pool of the contract.
      */
-    function name() public view returns (string memory) {
+    function name() public view override returns (string memory) {
         return _name;
     }
     
@@ -1112,7 +1102,7 @@ contract ERC20CallOptionPool is PandaBase {
     function _slotSupply(uint) internal view override returns(uint) {
         return collateral.mul(utilizationRate)
                             .div(100)
-                            .div(_numOptions);
+                            .div(_options.length);
     }
 }
 
@@ -1129,8 +1119,8 @@ contract PutOptionPool is PandaBase {
      * @param USDTContract Tether USDT contract address
      * @param priceFeed Chainlink contract for getting Ether price
      */
-    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract, uint8 numOptions)
-        PandaBase(USDTContract, priceFeed, cdfContract, numOptions)
+    constructor(string memory name_, uint8 assetDecimal, IERC20 USDTContract, AggregatorV3Interface priceFeed, CDFDataInterface cdfContract)
+        PandaBase(USDTContract, priceFeed, cdfContract)
         public { 
             _name = name_;
             ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);
@@ -1139,7 +1129,7 @@ contract PutOptionPool is PandaBase {
     /**
      * @dev Returns the pool of the contract.
      */
-    function name() public view returns (string memory) {
+    function name() public view override returns (string memory) {
         return _name;
     }
 
@@ -1232,7 +1222,7 @@ contract PutOptionPool is PandaBase {
        return collateral.mul(utilizationRate)
                             .mul(ASSET_PRICE_UNIT)
                             .div(100)
-                            .div(_numOptions)
+                            .div(_options.length)
                             .div(assetPrice);
     }
 }

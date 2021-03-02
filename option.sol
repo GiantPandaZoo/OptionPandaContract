@@ -35,9 +35,7 @@ contract Option is Context, IOption {
     mapping (address => uint) private settledRounds;
     
     uint private currentRound; // a monotonic increasing round
-    
-    string private _name;
-    string private _symbol;
+
     uint8 private _decimals;
 
     /// @dev option related variables;
@@ -59,9 +57,7 @@ contract Option is Context, IOption {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (string memory name_, uint duration_, uint8 decimals_, IOptionPool poolContract) public {
-        _name = name_;
-        _symbol = name_;
+    constructor (uint duration_, uint8 decimals_, IOptionPool poolContract) public {
         _decimals = decimals_;
 
         // option settings
@@ -228,7 +224,7 @@ contract Option is Context, IOption {
      * @dev Returns the name of the token.
      */
     function name() public view override returns (string memory) {
-        return _name;
+        return string(abi.encodePacked(_pool.name(), "-", Strings.toString(_duration)));
     }
 
     /**
@@ -236,7 +232,7 @@ contract Option is Context, IOption {
      * name.
      */
     function symbol() public view returns (string memory) {
-        return _symbol;
+        return name();
     }
 
     /**
