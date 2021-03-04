@@ -276,11 +276,21 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev Profits Claiming log
      */
      event ProfitsClaim(address indexed account, uint amount);
+     
+    /**
+     * @dev Profits Settle log
+     */
+     event ProfitsSettled(address indexed account, uint amount);
 
     /**
      * @dev Premium Claiming log
      */
      event PremiumClaim(address indexed account, uint amount);
+     
+    /**
+     * @dev Premium Settle log
+     */
+     event PremiumSettled(address indexed account, uint amount);
     
     /**
      * @dev ownership transfer event log
@@ -734,6 +744,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         uint premiumBalance = _premiumBalance[account];
         uint opaBalance = _opaBalance[account];
+        uint premiumSettled;
         
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
@@ -746,7 +757,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
             premiumBalance = premiumBalance.add(roundPremium);
-
+            premiumSettled = premiumSettled.add(roundPremium);
 
             // OPA                                        
             uint roundOPA =  option.getRoundAccOPASellerShare(currentRound-1).sub(option.getRoundAccOPASellerShare(lastSettledRound))
@@ -761,6 +772,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
         _opaBalance[account] = opaBalance;
+        
+        // log settled premium
+        emit PremiumSettled(msg.sender, premiumSettled);
     }
     
     /**
@@ -860,6 +874,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // set current round unclaimed
         option.setUnclaimedProfitsRound(currentRound, account);
+        
+        // log settled profits
+        emit ProfitsSettled(msg.sender, profits);
     }
 
     /**
