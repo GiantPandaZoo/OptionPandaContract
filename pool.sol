@@ -280,7 +280,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @dev Profits Settle log
      */
-     event ProfitsSettled(address indexed account, uint amount);
+     event ProfitsSettled(address indexed account, address indexed optionContract, uint round, uint profitsSettled);
 
     /**
      * @dev Premium Claiming log
@@ -876,7 +876,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         option.setUnclaimedProfitsRound(currentRound, account);
         
         // log settled profits
-        emit ProfitsSettled(msg.sender, profits);
+        emit ProfitsSettled(msg.sender, address(option), unclaimedRound, profits);
     }
 
     /**
