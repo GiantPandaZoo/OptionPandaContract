@@ -265,7 +265,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @dev settle debug log
      */
-    event SettleLog(address indexed optionContract, uint round, uint totalProfit, uint totalOptionSold);
+    event SettleLog(address indexed optionContract, uint round);
     
     /**
      * @dev sigma update log
@@ -575,7 +575,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
         
         // log
-        emit SettleLog(address(option), round, totalProfits, totalOptionSold);
+        emit SettleLog(address(option), round);
     }
 
     /**
