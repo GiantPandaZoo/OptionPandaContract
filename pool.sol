@@ -290,7 +290,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @dev Premium Settle log
      */
-     event PremiumSettled(address indexed account, uint amount);
+     event PremiumSettled(address indexed account, uint accountCollateral, uint premiumSettled);
     
     /**
      * @dev ownership transfer event log
@@ -774,7 +774,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         _opaBalance[account] = opaBalance;
         
         // log settled premium
-        emit PremiumSettled(msg.sender, premiumSettled);
+        emit PremiumSettled(msg.sender, accountCollateral, premiumSettled);
     }
     
     /**
@@ -974,7 +974,7 @@ contract NativeCallOptionPool is PandaBase {
         poolerTokenContract.burn(msg.sender, amount);
         // substract collateral
         collateral = collateral.sub(amount);
-
+  
         // transfer ETH to msg.sender
         msg.sender.sendValue(amount);
         
