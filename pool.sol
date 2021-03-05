@@ -129,7 +129,6 @@ contract PausablePool is Context{
     }
 }
 
-
 /**
  * @title base contract for option pool
  */
@@ -247,61 +246,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
         _;
     }
-        
-    /**
-     * @dev deposit event
-     */
-    event Deposit(address indexed account, uint amount);
-    
-    /**
-     * @dev withdraw event
-     */
-    event Withdraw(address indexed account, uint amount);
-    
-    /**
-     * @dev option buy Log
-     */
-    event Buy(address indexed account, address indexed optionContract, uint round, uint amount, uint premiumCost);
-
-    /**
-     * @dev settle debug log
-     */
-    event SettleLog(address indexed optionContract, uint round);
-    
-    /**
-     * @dev sigma update log
-     */
-    event SigmaUpdate(uint sigma, uint rate);
-    
-    /**
-     * @dev Profits Claiming log
-     */
-     event ProfitsClaim(address indexed account, uint amount);
-     
-    /**
-     * @dev Profits Settle log
-     */
-     event ProfitsSettled(address indexed account, address indexed optionContract, uint round, uint profitsSettled);
-
-    /**
-     * @dev Premium Claiming log
-     */
-     event PremiumClaim(address indexed account, uint amount);
-     
-    /**
-     * @dev Premium Settle log
-     */
-     event PremiumSettled(address indexed account, uint accountCollateral, uint premiumSettled);
-    
-    /**
-     * @dev ownership transfer event log
-     */
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /**
-     * @dev sigma set log
-     */
-    event SigmaSet(uint sigma);
 
     /**
      * @dev abstract function for current option supply per slot
