@@ -144,10 +144,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * constructor will fail if the address is illegal.
      */
     // rinkeby
-    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
     
     // BSC
-    IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
+    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
     
     
     uint public collateral; // collaterals in this pool
@@ -165,6 +165,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
     IERC20 public USDTContract; // USDT asset contract address
     AggregatorV3Interface public priceFeed; // chainlink price feed
+    uint8 assetDecimal; // asset decimal
     CDFDataInterface public cdfDataContract; // cdf data contract;
 
     uint8 public utilizationRate = 50; // utilization rate of the pool in percent
@@ -322,9 +323,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(AggregatorV3Interface priceFeed_) public {
+    constructor(AggregatorV3Interface priceFeed_, uint8 assetDecimal_) public {
         _owner = msg.sender;
         priceFeed = priceFeed_;
+        assetDecimal = assetDecimal_;
              
         // contract references
         USDTContract = IERC20(pandaFactory.getUSDTContract());
@@ -342,14 +344,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         inited = true;
 
         // creation of options
-        _options.push(pandaFactory.createOption(300, 18, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(900, 18, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(1800, 18, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(2700, 18, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(3600, 18, IOptionPool(this)));
-        
-        // creation of pooler token
-        poolerTokenContract = pandaFactory.createPoolerToken(18, IOptionPool(this));
+        _options.push(pandaFactory.createOption(300, assetDecimal, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(900, assetDecimal, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(1800, assetDecimal, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(2700, assetDecimal, IOptionPool(this)));
+        _options.push(pandaFactory.createOption(3600, assetDecimal, IOptionPool(this)));
     }
 
     /**
@@ -939,9 +938,11 @@ contract NativeCallOptionPool is PandaBase {
      * @param priceFeed Chainlink contract for getting Ether price
      */
     constructor(string memory name_, AggregatorV3Interface priceFeed)
-        PandaBase(priceFeed)
+        PandaBase(priceFeed, 18)
         public {
             _name = name_;
+            // creation of pooler token
+            poolerTokenContract = pandaFactory.createPoolerToken(18, IOptionPool(this));
         }
 
     /**
@@ -1040,10 +1041,11 @@ contract ERC20CallOptionPool is PandaBase {
      * @param priceFeed Chainlink contract for getting Ether price
      */
     constructor(string memory name_, IERC20 AssetContract_, AggregatorV3Interface priceFeed)
-        PandaBase(priceFeed)
+        PandaBase(priceFeed, AssetContract_.decimals())
         public { 
-             _name = name_;
-             AssetContract = AssetContract_;
+            _name = name_;
+            AssetContract = AssetContract_;
+            poolerTokenContract = pandaFactory.createPoolerToken(AssetContract_.decimals(), IOptionPool(this));
         }
 
     /**
@@ -1143,10 +1145,11 @@ contract PutOptionPool is PandaBase {
      * @param priceFeed Chainlink contract for getting Ether price
      */
     constructor(string memory name_, uint8 assetDecimal, AggregatorV3Interface priceFeed)
-        PandaBase(priceFeed)
+        PandaBase(priceFeed, assetDecimal)
         public { 
             _name = name_;
             ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);
+            poolerTokenContract = pandaFactory.createPoolerToken(USDTContract.decimals(), IOptionPool(this));
         }
 
     /**
