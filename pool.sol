@@ -425,6 +425,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // create a memory copy of array
         IOption [] memory options = _options;
         
+        // accumulated manager's revenue
+        uint256 accManagerRevenue;
+        
         // settle all options
         for (uint i = 0;i< options.length;i++) {
             if (block.timestamp >= options[i].expiryDate()) { // expired
@@ -432,10 +435,15 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                 if (assetPrice == 0) {
                     assetPrice = getAssetPrice();
                 }
-                _settleOption(options[i], assetPrice);
+                accManagerRevenue += _settleOption(options[i], assetPrice);
             } else { // mark unexpired by clearning 0
                 options[i] = IOption(0);
             }
+        }
+        
+        // transfer manager's USDT premium
+        if (accManagerRevenue > 0) {
+            USDTContract.safeTransfer(poolManager, accManagerRevenue);
         }
 
         // calculate supply for a slot after settlement,
@@ -464,7 +472,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @dev settle option contract
      */
-    function _settleOption(IOption option, uint settlePrice) internal {
+    function _settleOption(IOption option, uint settlePrice) internal returns (uint256 managerRevenue) {
         uint totalSupply = option.totalSupply();
         uint strikePrice = option.strikePrice();
         
@@ -491,15 +499,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             //  is the share for one pooler.
 
             // 1% belongs to platform
-            uint reserve = totalPremiums.div(100);
-                    
-            // transfer manager's premium
-            if (reserve > 0) {
-                USDTContract.safeTransfer(poolManager, reserve);
-            }
-            
+            managerRevenue = totalPremiums.div(100);
+
             // 99% belongs to all pooler
-            uint premiumShare = totalPremiums.sub(reserve)
+            uint premiumShare = totalPremiums.sub(managerRevenue)
                                 .mul(SHARE_MULTIPLIER)      // mul share with SHARE_MULTIPLIER to avert from underflow
                                 .div(poolerTotalSupply);
                                 
@@ -529,9 +532,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             // mark blocks rewarded;
             lastRewardBlock += blocksToReward;
         }
-        
-        // log
-        emit SettleLog(address(option), round);
     }
 
     /**
