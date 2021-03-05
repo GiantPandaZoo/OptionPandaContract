@@ -278,6 +278,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
 
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
+        
+        // set default poolManager
+        poolManager = msg.sender;
     }
     
     /**
@@ -462,8 +465,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev settle option contract
      */
     function _settleOption(IOption option, uint settlePrice) internal {
-        require(poolManager!= address(0), "poolmgr not set");
-        
         uint totalSupply = option.totalSupply();
         uint strikePrice = option.strikePrice();
         
@@ -493,7 +494,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             uint reserve = totalPremiums.div(100);
                     
             // transfer manager's premium
-            USDTContract.safeTransfer(poolManager, reserve);
+            if (reserve > 0) {
+                USDTContract.safeTransfer(poolManager, reserve);
+            }
             
             // 99% belongs to all pooler
             uint premiumShare = totalPremiums.sub(reserve)
