@@ -42,9 +42,11 @@ contract AggregateUpdater {
         }
     }
     
-    function addPool(IOptionPool pool) external onlyOwner {
-        removePool(pool);
-        pools.push(pool);
+    function addPools(IOptionPool [] memory newPools) external onlyOwner {
+        for (uint i=0;i<newPools.length;i++) {
+            removePool(newPools[i]);
+            pools.push(newPools[i]);
+        }
     }
 
     function removePool(IOptionPool pool) public onlyOwner {
