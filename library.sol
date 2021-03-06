@@ -564,8 +564,8 @@ interface AggregatorV3Interface {
 
 // CDF data contact interface
 abstract contract CDFDataInterface {
-    mapping (uint => uint32[]) public CDF;
-    uint32[] public Durations;
+    mapping (uint => uint24[]) public CDF;
+    uint16[] public Durations;
     uint public Amplifier;
     function numDurations() external view virtual returns (uint);
 }

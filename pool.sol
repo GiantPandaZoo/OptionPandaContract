@@ -381,10 +381,26 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice check option cost for given amount of option
      */
     function premiumCost(uint amount, IOption optionContract) public override view returns(uint) {
+        // expiry check
+        if (block.timestamp >= optionContract.expiryDate()) {
+            return 0;
+        }
+        
+        // align to proper duration
+        uint timediff = optionContract.expiryDate().sub(block.timestamp);
+        uint duration = timediff.div(120).mul(120); // round to 2min
+        
+        // align duration to [120, 3600]
+        if (duration < 120) {
+            duration = 120;
+        } else if (duration > 3600) {
+            duration = 3600;
+        }
+
         // notice the CDF is already multiplied by cdfDataContract.Amplifier()
-        uint cdf = cdfDataContract.CDF(optionContract.getDuration(), _sigmaToIndex());
+        uint cdf = cdfDataContract.CDF(duration, _sigmaToIndex());
         // note the price is for 10 ** option decimals
-        return amount * optionContract.strikePrice() * cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
+        return amount * getAssetPrice() * cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
     }
 
     /**

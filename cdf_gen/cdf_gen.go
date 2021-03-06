@@ -21,10 +21,10 @@ func main() {
 	}
 
 	var durations []time.Duration
-	for i := time.Duration(1); i <= 60; i++ {
+	for i := time.Duration(2); i <= 60; i += 2 {
 		durations = append(durations, i*time.Minute)
 	}
-	maxSigma := uint64(200)
+	maxSigma := uint64(150)
 
 	duration_array := "["
 	for _, d := range durations {
@@ -33,7 +33,7 @@ func main() {
 			values += fmt.Sprintf("%v,", calc(&dist, s, d))
 		}
 		values += fmt.Sprintf("%v]", calc(&dist, maxSigma, d))
-		fmt.Printf("uint32[] private _cdf%v=%v;\n", uint64(d/time.Second), values)
+		fmt.Printf("uint24[] private _cdf%v=%v;\n", uint64(d/time.Second), values)
 		duration_array += fmt.Sprintf("%v,", uint64(d/time.Second))
 	}
 
