@@ -143,10 +143,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * constructor will fail if the address is illegal.
      */
     // rinkeby
-    IPandaFactory internal constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
+    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
     
     // BSC
-    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
     
     
     uint public collateral; // collaterals in this pool
