@@ -535,9 +535,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
             // OPA share per seller's token setting:
             // 50% of block OPA reward is dedicated to all Put or Call pooler.
-            uint totalOPA = OPAPerBlock.mul(blocksToReward);
+            uint mintedOPA = OPAPerBlock.mul(blocksToReward);
     
-            roundOPASellerShare = totalOPA
+            roundOPASellerShare = mintedOPA
                                     .mul(SHARE_MULTIPLIER)
                                     .div(poolerTotalSupply);
                                     
