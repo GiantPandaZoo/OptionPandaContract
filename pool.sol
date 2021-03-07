@@ -296,6 +296,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         _options.push(pandaFactory.createOption(1800, assetDecimal, IOptionPool(this)));
         _options.push(pandaFactory.createOption(2700, assetDecimal, IOptionPool(this)));
         _options.push(pandaFactory.createOption(3600, assetDecimal, IOptionPool(this)));
+        
+        update();
     }
 
     /**
@@ -544,8 +546,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             // mark blocks rewarded;
             lastRewardBlock += blocksToReward;
         }
-        
+
         // set the accumulated premiumShare & accumulated OPA share
+        // @dev even if round == 0, and round downflows to 0xfff....fff, the return value wil be 0;
         uint accPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
         option.setRoundAccPremiumShare(round, accPremiumShare);
         
