@@ -506,7 +506,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
         uint totalPremiums = option.totalPremiums();
         uint round = option.getRound();
-                    
+        
+        // settle premium share
+        uint roundPremiumShare;
         if (poolerTotalSupply > 0) {
             // set premium and OPA share to round for poolers
             // ASSUMPTION:
@@ -518,18 +520,16 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             managerRevenue = totalPremiums.div(100);
 
             // 99% belongs to all pooler
-            uint premiumShare = totalPremiums.sub(managerRevenue)
+            roundPremiumShare = totalPremiums.sub(managerRevenue)
                                 .mul(SHARE_MULTIPLIER)      // mul share with SHARE_MULTIPLIER to avert from underflow
                                 .div(poolerTotalSupply);
-                                
-
-            uint accPremiumShare = premiumShare.add(option.getRoundAccPremiumShare(round-1));
-            option.setRoundAccPremiumShare(round, accPremiumShare);
         }
         
-        
+        // settle OPA share
         // OPA token rewards in (startBlock, endBlock]
-        if (poolerTotalSupply > 0 && lastRewardBlock < endBlock) {
+        // OPA share will be placed randomly in some option's RoundData.accOPASellerShare
+        uint roundOPASellerShare;
+        if (poolerTotalSupply > 0 && lastRewardBlock < block.number && lastRewardBlock < endBlock) {
             uint blocksToReward = block.number <= endBlock ? 
                                     block.number.sub(lastRewardBlock) : endBlock - lastRewardBlock;
 
@@ -537,17 +537,20 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             // 50% of block OPA reward is dedicated to all Put or Call pooler.
             uint totalOPA = OPAPerBlock.mul(blocksToReward);
     
-            uint opaSellerShare = totalOPA
+            roundOPASellerShare = totalOPA
                                     .mul(SHARE_MULTIPLIER)
                                     .div(poolerTotalSupply);
                                     
-            uint accOPASellerShare = opaSellerShare.add(option.getRoundAccOPASellerShare(round-1));
-                                    
-            option.setRoundAccOPASellerShare(round, accOPASellerShare);
-        
             // mark blocks rewarded;
             lastRewardBlock += blocksToReward;
         }
+        
+        // set the accumulated premiumShare & accumulated OPA share
+        uint accPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
+        option.setRoundAccPremiumShare(round, accPremiumShare);
+        
+        uint accOPASellerShare = roundOPASellerShare.add(option.getRoundAccOPASellerShare(round-1));
+        option.setRoundAccOPASellerShare(round, accOPASellerShare);
     }
 
     /**
