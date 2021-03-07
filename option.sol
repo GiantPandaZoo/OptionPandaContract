@@ -17,8 +17,7 @@ contract Option is Context, IOption {
         mapping (address => mapping (address => uint256)) allowances;
         uint256 totalSupply;
         uint expiryDate;
-        uint strikePrice;
-        uint settlePrice;
+        uint settlePrice; // settle price of this round, and is the strike price for next round.
         
         uint totalPremiums; // total premium in this round
         uint accPremiumShare; // accumulated premium share for a pooler
@@ -79,7 +78,6 @@ contract Option is Context, IOption {
         
         // setting new round parameters
         rounds[r].expiryDate = block.timestamp + _duration;
-        rounds[r].strikePrice = strikePrice_;
         rounds[r].totalSupply = newSupply;
         rounds[r].balances[address(_pool)] = newSupply;
 
@@ -105,7 +103,10 @@ contract Option is Context, IOption {
      * @dev get strike price from round r
      */
     function getRoundStrikePrice(uint r) external override view returns(uint) {
-        return rounds[r].strikePrice;
+        if (r == 0) {
+            return 0;
+        }
+        return rounds[r-1].settlePrice;
     }
     
     /**
@@ -217,7 +218,10 @@ contract Option is Context, IOption {
      * @dev returns strike price for current round
      */
     function strikePrice() external override view returns (uint) {
-        return rounds[currentRound].strikePrice;
+        if (currentRound == 0) {
+            return 0;
+        }
+        return rounds[currentRound-1].settlePrice;
     }
     
     /**
