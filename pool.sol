@@ -492,9 +492,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         if (block.timestamp > _nextSigmaUpdate) {
             updateSigma();
         }
-        
+
         // OPA Reward Update
-        tryUpdateOPAReward();
+        if (block.timestamp > _nextOPARewardUpdate) {
+            updateOPAReward();
+        }
     }
     
     /**
@@ -544,13 +546,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
     
     /**
-     * @dev try update OPA reward
+     * @dev update OPA reward
      */
-    function tryUpdateOPAReward() internal {
-        if (block.timestamp < _nextOPARewardUpdate) {
-            return;
-        }
-        
+    function updateOPAReward() internal {
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
 
         // settle OPA share for this round
