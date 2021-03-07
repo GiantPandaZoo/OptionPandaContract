@@ -21,7 +21,6 @@ contract Option is Context, IOption {
         
         uint totalPremiums; // total premium in this round
         uint accPremiumShare; // accumulated premium share for a pooler
-        uint accOPASellerShare; // accmulated OPA share for pooler
     }
     
     /// @dev added extra round index to all mapping
@@ -142,20 +141,6 @@ contract Option is Context, IOption {
         rounds[r].accPremiumShare = accPremiumShare;
     }
 
-    /**
-     * @dev get round seller's OPA share
-     */
-    function getRoundAccOPASellerShare(uint r) external view override returns(uint) {
-        return rounds[r].accOPASellerShare;
-    }
-    
-    /**
-     * @dev set round seller's OPA share
-     */
-    function setRoundAccOPASellerShare(uint r, uint accOPASellerShare) external override onlyPool {
-        rounds[r].accOPASellerShare = accOPASellerShare;
-    }
-    
     /**
      * @dev get all unclaimed profits rounds for account
      */

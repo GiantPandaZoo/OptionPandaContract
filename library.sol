@@ -586,9 +586,7 @@ interface IOption is IERC20 {
     function setUnclaimedProfitsRound(uint r, address account) external;
     function getSettledRound(address account) external view returns (uint);
     function setSettledRound(uint r, address account) external;
-    function getRoundAccOPASellerShare(uint r) external view returns(uint);
-    function setRoundAccOPASellerShare(uint r, uint sellerOPAShare) external;
-    
+
     // current round
     function addPremium(uint256 amountUSDT) external;
     function totalPremiums() external view returns (uint);
