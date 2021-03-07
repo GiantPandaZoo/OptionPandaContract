@@ -143,10 +143,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * constructor will fail if the address is illegal.
      */
     // rinkeby
-    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x2Aac683116aF262D8aD3D4f7322fB095f31D61B3);
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0x01195edeDEC58a9e12bF2EB6b81879959cBc2e9f);
     
     // BSC
-    IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
+    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
     
     
     uint public collateral; // collaterals in this pool
@@ -386,8 +386,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             return 0;
         }
         
-        // align to proper duration
-        uint timediff = optionContract.expiryDate().sub(block.timestamp);
+        // rounding to nearest duration
+        uint timediff = optionContract.expiryDate().sub(block.timestamp).add(60);
         uint duration = timediff.div(120).mul(120); // round to 2min
         
         // align duration to [120, 3600]
