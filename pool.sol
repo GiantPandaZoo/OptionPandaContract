@@ -199,7 +199,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /// @dev expected next OPA distribute time
     uint private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
     /// @dev block reward for this pool
-    uint public OPAPerBlock = 10 * 1e18; 
+    uint public OPABlockReward = 10 * 1e18; 
     // @dev last OPA reward block
     uint private lastRewardBlock = block.number;
 
@@ -371,7 +371,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev set OPA reward per height
      */
     function setOPAReward(uint256 amount) external onlyOwner {
-        OPAPerBlock = amount;
+        OPABlockReward = amount;
     }
     
     /**
@@ -549,7 +549,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint roundOPAShare;
         if (poolerTotalSupply > 0 && lastRewardBlock < block.number) {
             uint blocksToReward = block.number.sub(lastRewardBlock);
-            uint mintedOPA = OPAPerBlock.mul(blocksToReward);
+            uint mintedOPA = OPABlockReward.mul(blocksToReward);
     
             // OPA share per pooler token
             roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
