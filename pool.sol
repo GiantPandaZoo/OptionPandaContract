@@ -260,9 +260,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     function _slotSupply(uint assetPrice) internal view virtual returns(uint);
     
     /**
-     * @dev abstract function to calculate option gain
+     * @dev abstract function to calculate option profits
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view virtual returns(uint256 gain);
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view virtual returns(uint256);
     
     /**
      * @dev abstract function to send back option profits
@@ -498,6 +498,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     /**
      * @dev settle option contract
+     * 
+     * ASSUMPTION:
+     *  if one pooler's token amount keeps unchanged after settlement, then
+     *  accmulated premiumShare * (pooler token) 
+     *  is the share for one pooler.
      */
     function _settleOption(IOption option, uint settlePrice) internal returns (uint256 managerRevenue) {
         uint totalSupply = option.totalSupply();
@@ -506,11 +511,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // count total sold options
         uint totalOptionSold = totalSupply.sub(option.balanceOf(address(this)));
         
-        // calculate total gain
+        // calculate total profits
         uint totalProfits = _calcProfits(settlePrice, strikePrice, totalOptionSold);
 
         // substract collateral
-        // buyer's gain is pooler's loss
+        // buyer's profits is pooler's loss
         collateral = collateral.sub(totalProfits);
 
         // settle preimum dividends
@@ -521,12 +526,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // settle premium share
         uint roundPremiumShare;
         if (poolerTotalSupply > 0) {
-            // set premium and OPA share to round for poolers
-            // ASSUMPTION:
-            //  if one pooler's token amount keeps unchanged after settlement, then
-            //      accmulated premiumShare * (pooler token) 
-            //  is the share for one pooler.
-
             // 1% belongs to platform
             managerRevenue = totalPremiums.div(100);
 
@@ -536,7 +535,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                                 .div(poolerTotalSupply);
         }
 
-        // set the accumulated premiumShare & accumulated OPA share
+        // set the accumulated premiumShare
         // @dev even if round == 0, and round - 1 underflows to 0xfff....fff, the return value wil be 0;
         uint accPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
         option.setRoundAccPremiumShare(round, accPremiumShare);
@@ -972,9 +971,9 @@ contract NativeCallOptionPool is PandaBase {
     }
     
     /**
-     * @dev function to calculate option gain
+     * @dev function to calculate option profits
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 profits) {
         // call options get profits due to price rising.
         if (settlePrice > strikePrice && strikePrice > 0) { 
             // calculate ratio
@@ -982,7 +981,7 @@ contract NativeCallOptionPool is PandaBase {
                                         .mul(1e12)              // mul by 1e12 here to avoid underflow
                                         .div(strikePrice);
             
-            // calculate ETH gain of this amount
+            // calculate ETH profits of this amount
             uint holderETHProfit = ratio.mul(optionAmount)
                                         .div(1e12);         // remember to div by 1e12 previous mul-ed
             
@@ -1083,9 +1082,9 @@ contract ERC20CallOptionPool is PandaBase {
     }
 
     /**
-     * @dev function to calculate option gain
+     * @dev function to calculate option profits
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 profits) {
         // call options get profits due to price rising.
         if (settlePrice > strikePrice && strikePrice > 0) { 
             // calculate ratio
@@ -1093,7 +1092,7 @@ contract ERC20CallOptionPool is PandaBase {
                                     .mul(1e12)          // mul by 1e12 here to avoid from underflow
                                     .div(strikePrice);
             
-            // calculate Asset gain of this amount
+            // calculate asset profits of this amount
             uint holderAssetProfit = ratio.mul(optionAmount)
                                     .div(1e12);         // remember to div by 1e12 previous mul-ed
             
@@ -1196,9 +1195,9 @@ contract PutOptionPool is PandaBase {
     }
 
     /**
-     * @dev function to calculate option gain
+     * @dev function to calculate option profits
      */
-    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 gain) {
+    function _calcProfits(uint settlePrice, uint strikePrice, uint optionAmount) internal view override returns(uint256 profits) {
         if (settlePrice < strikePrice && strikePrice > 0) {  // put option get profits at this round
             // calculate ratio
             uint ratio = strikePrice.sub(settlePrice)
@@ -1209,7 +1208,7 @@ contract PutOptionPool is PandaBase {
             uint holderShare = ratio.mul(optionAmount);
 
          
-            // convert to USDT gain
+            // convert to USDT profits
             uint holderUSDTProfit = holderShare.mul(strikePrice)
                                     .div(1e12)                  // remember to div 1e12 previous multipied
                                     .div(ASSET_PRICE_UNIT);     // remember to div price unit
