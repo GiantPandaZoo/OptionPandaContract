@@ -141,6 +141,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // initialization once
     bool private inited;
     
+    // option durations
+    uint16 [] private _durations = [300,900,1800,2700,3600];
+    
     /**
      * @dev option creation factory, set this based on blockchain
      * constructor will fail if the address is illegal.
@@ -150,7 +153,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     // BSC
     //IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
-    
     
     uint public collateral; // collaterals in this pool
     
@@ -203,8 +205,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
     // @dev last OPA reward block
     uint private _lastRewardBlock = block.number;
-
-
 
     /**
      * @dev Modifier to make a function callable only by owner
@@ -297,12 +297,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         inited = true;
 
         // creation of options
-        _options.push(pandaFactory.createOption(300, assetDecimal, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(900, assetDecimal, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(1800, assetDecimal, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(2700, assetDecimal, IOptionPool(this)));
-        _options.push(pandaFactory.createOption(3600, assetDecimal, IOptionPool(this)));
-        
+        for (uint i=0;i<_durations.length;i++) {
+            _options.push(pandaFactory.createOption(_durations[i], assetDecimal, IOptionPool(this)));
+        }
+
+        // first update;
         update();
     }
 
