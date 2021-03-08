@@ -188,20 +188,23 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * OPA Rewarding
      */
+    /// @dev block reward for this pool
+    uint public OPABlockReward = 10 * 1e18; 
+    // @dev update period in secs for OPA distribution.
+    uint public constant opaRewardUpdatePeriod = 3600;
+    
     /// @dev round index mapping to accumulate share.
     mapping (uint => uint) private _opaAccShares;
     /// @dev mark pooler's highest settled OPA round.
     mapping (address => uint) private _settledOPARounds;
     /// @dev a monotonic increasing OPA round index, STARTS FROM 1
     uint private _currentOPARound = 1;
-    // @dev update period in secs for OPA distribution.
-    uint public constant opaRewardUpdatePeriod = 3600;
     /// @dev expected next OPA distribute time
     uint private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
-    /// @dev block reward for this pool
-    uint public OPABlockReward = 10 * 1e18; 
     // @dev last OPA reward block
-    uint private lastRewardBlock = block.number;
+    uint private _lastRewardBlock = block.number;
+
+
 
     /**
      * @dev Modifier to make a function callable only by owner
@@ -547,8 +550,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // settle OPA share for this round
         uint roundOPAShare;
-        if (poolerTotalSupply > 0 && lastRewardBlock < block.number) {
-            uint blocksToReward = block.number.sub(lastRewardBlock);
+        if (poolerTotalSupply > 0 && _lastRewardBlock < block.number) {
+            uint blocksToReward = block.number.sub(_lastRewardBlock);
             uint mintedOPA = OPABlockReward.mul(blocksToReward);
     
             // OPA share per pooler token
@@ -556,7 +559,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                                         .div(poolerTotalSupply);
                                     
             // mark block rewarded;
-            lastRewardBlock = block.number;
+            _lastRewardBlock = block.number;
         }
                 
         // accumulate OPA share
