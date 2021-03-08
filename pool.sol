@@ -548,7 +548,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // settle OPA share for this round
         uint roundOPAShare;
-        if (poolerTotalSupply > 0 && _lastRewardBlock < block.number) {
+        if (poolerTotalSupply > 0) {
             uint blocksToReward = block.number.sub(_lastRewardBlock);
             uint mintedOPA = OPABlockReward.mul(blocksToReward);
     
