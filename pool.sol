@@ -769,22 +769,22 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice check claimable buyer's profits
      */
     function checkProfits(address account) external override view returns (uint256 profits) {
+        // load from profits balance
+        profits = _profitsBalance[account];
         // sum all profits from all options
         for (uint i = 0; i < _options.length; i++) {
             profits += checkOptionProfits(_options[i], account);
         }
-        return (profits);
+        return profits;
     }
     
     /**
      * @notice check profits in an option
      */
     function checkOptionProfits(IOption option, address account) internal view returns (uint256 amount) {
-        amount = _profitsBalance[account];
-
         uint unclaimedRound = option.getUnclaimedProfitsRound(account);
         if (unclaimedRound == option.getRound()) {
-            return (amount);
+            return 0;
         }
 
         // accumulate profits in _profitsBalance
@@ -792,7 +792,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint strikePrice = option.getRoundStrikePrice(unclaimedRound);
         uint optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
         
-        return amount + _calcProfits(settlePrice, strikePrice, optionAmount);
+        return _calcProfits(settlePrice, strikePrice, optionAmount);
     }
         
     /**
