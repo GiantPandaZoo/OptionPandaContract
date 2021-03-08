@@ -154,7 +154,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // BSC
     IPandaFactory internal constant pandaFactory = IPandaFactory(0x0581C7D038AFd4818EAF92193A1B6A2BAd7382aC); 
     
-    uint public collateral; // collaterals in this pool
+    uint256 public collateral; // collaterals in this pool
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600; // sigma update period
@@ -175,9 +175,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 public maxUtilizationRate = 75; // max utilization rate of the pool in percent
     uint16 public sigma = 70; // current sigma
     
-    uint private _sigmaSoldOptions;  // sum total options sold in a period
-    uint private _sigmaTotalOptions; // sum total options issued
-    uint private _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD; // expected next sigma updating time;
+    uint256 private _sigmaSoldOptions;  // sum total options sold in a period
+    uint256 private _sigmaTotalOptions; // sum total options issued
+    uint256 private _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD; // expected next sigma updating time;
     
     // tracking pooler's collateral with
     // the token contract of the pooler;
@@ -190,20 +190,20 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * OPA Rewarding
      */
     /// @dev block reward for this pool
-    uint public OPABlockReward = 10 * 1e18; 
+    uint256 public OPABlockReward = 10 * 1e18; 
     // @dev update period in secs for OPA distribution.
-    uint public constant opaRewardUpdatePeriod = 3600;
+    uint256 public constant opaRewardUpdatePeriod = 3600;
     
     /// @dev round index mapping to accumulate share.
     mapping (uint => uint) private _opaAccShares;
     /// @dev mark pooler's highest settled OPA round.
     mapping (address => uint) private _settledOPARounds;
     /// @dev a monotonic increasing OPA round index, STARTS FROM 1
-    uint private _currentOPARound = 1;
+    uint256 private _currentOPARound = 1;
     /// @dev expected next OPA distribute time
-    uint private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
+    uint256 private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
     // @dev last OPA reward block
-    uint private _lastRewardBlock = block.number;
+    uint256 private _lastRewardBlock = block.number;
 
     /**
      * @dev Modifier to make a function callable only by owner
@@ -420,7 +420,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice get current utilization rate
      */
     function currentUtilizationRate() external override view returns (uint256) {
-        return _totalPledged().mul(100).div(collateral);
+        if (collateral > 0) {
+            return _totalPledged().mul(100).div(collateral);
+        }
+        return 0;
     }
     
     /**
