@@ -898,7 +898,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         if (latestPrice > 0) { // convert to USDT decimal
             return uint(latestPrice).mul(10 ** uint256(USDTContract.decimals()))
-                                    .div(10**uint256(priceFeed.decimals()));
+                                    .div(10 ** uint256(priceFeed.decimals()));
         }
         return 0;
     }
@@ -1116,7 +1116,7 @@ contract ERC20CallOptionPool is PandaBase {
  */
 contract PutOptionPool is PandaBase {
     string private _name;
-    uint private immutable ASSET_PRICE_UNIT;
+    uint private immutable assetPriceUnit;
     
     /**
      * @param priceFeed Chainlink contract for getting Ether price
@@ -1125,7 +1125,7 @@ contract PutOptionPool is PandaBase {
         PandaBase(priceFeed, assetDecimal)
         public { 
             _name = name_;
-            ASSET_PRICE_UNIT = 10 ** uint(assetDecimal);
+            assetPriceUnit = 10 ** uint(assetDecimal);
             poolerTokenContract = pandaFactory.createPoolerToken(USDTContract.decimals(), IOptionPool(this));
         }
 
@@ -1182,7 +1182,7 @@ contract PutOptionPool is PandaBase {
         }
         
         // @dev remember to div with asset price unit
-        total /= ASSET_PRICE_UNIT;        
+        total /= assetPriceUnit;        
         return total;
     }
 
@@ -1210,7 +1210,7 @@ contract PutOptionPool is PandaBase {
             // convert to USDT profits
             uint holderUSDTProfit = holderShare.mul(strikePrice)
                                     .div(1e12)                  // remember to div 1e12 previous multipied
-                                    .div(ASSET_PRICE_UNIT);     // remember to div price unit
+                                    .div(assetPriceUnit);     // remember to div price unit
 
             return holderUSDTProfit;
         }
@@ -1223,7 +1223,7 @@ contract PutOptionPool is PandaBase {
         // reset the contract
         // Formula : (collateral / numOptions) * utilizationRate / 100 / (assetPrice/ price unit)
        return collateral.mul(utilizationRate)
-                            .mul(ASSET_PRICE_UNIT)
+                            .mul(assetPriceUnit)
                             .div(100)
                             .div(_options.length)
                             .div(assetPrice);
