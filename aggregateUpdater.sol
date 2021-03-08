@@ -58,4 +58,8 @@ contract AggregateUpdater {
             }
         }
     }
+    
+    function clearPools() public onlyOwner {
+        delete pools;
+    }
 }
