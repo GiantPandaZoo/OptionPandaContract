@@ -145,7 +145,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint16 [] private _durations = [300,900,1800,2700,3600];
     
     /**
-     * @dev option creation factory, set this based on blockchain
+     * @dev option creation factory, set this based on blockchain,
      * constructor will fail if the address is illegal.
      */
     // rinkeby
@@ -826,8 +826,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
 
     /**
-     * @notice settle premium in rounds to _premiumBalance, 
-     * settle premium happens before any option token exchange such as ERC20-transfer,mint,burn,
+     * @notice settle profits in rounds to _profitsBalance, 
+     * settle buyer happens before any option token exchange such as ERC20-transfer,mint,burn,
      * and manually claimProfits;
      * 
      */
@@ -906,8 +906,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
 /**
  * @title Implementation of Native Call Option Pool
- * NativeCallOptionPool Call Option Pool use native tokens as collateral and bets
- * on Chainlink Oralce Price Feed.
+ * NativeCallOptionPool Call Option Pool use native currency as collateral and bets
+ * on Chainlink Oracle Price Feed.
  */
 contract NativeCallOptionPool is PandaBase {
     string private _name;
@@ -1008,7 +1008,7 @@ contract NativeCallOptionPool is PandaBase {
 /**
  * @title Implementation of ERC20 Asset Call Option Pool
  * ERC20 Asset Call Option Pool use ERC20 asset as collateral and bets
- * on Chainlink Oralce Price Feed.
+ * on Chainlink Oracle Price Feed.
  */
 contract ERC20CallOptionPool is PandaBase {
     string private _name;
@@ -1112,7 +1112,7 @@ contract ERC20CallOptionPool is PandaBase {
 /**
  * @title Implementation of Put Option Pool
  * Put Option Pool requires USDT as collateral and 
- * bets on Chainlink Oralce Price Feed of one asset.
+ * bets on Chainlink Oracle Price Feed of one asset.
  */
 contract PutOptionPool is PandaBase {
     string private _name;
@@ -1210,7 +1210,7 @@ contract PutOptionPool is PandaBase {
             // convert to USDT profits
             uint holderUSDTProfit = holderShare.mul(strikePrice)
                                     .div(1e12)                  // remember to div 1e12 previous multipied
-                                    .div(assetPriceUnit);     // remember to div price unit
+                                    .div(assetPriceUnit);       // remember to div price unit
 
             return holderUSDTProfit;
         }
