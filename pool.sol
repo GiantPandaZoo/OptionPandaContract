@@ -185,7 +185,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     address public poolManager;     // platform contract
     
     IERC20 public OPAToken;  // OPA token contract
-    bool private opaTokenOnce;
 
     /**
      * OPA Rewarding
@@ -867,9 +866,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice set OPA token once
      */
     function setOPAToken(IERC20 OPAToken_) external override onlyOwner {
-        require (!opaTokenOnce, "already set");
         OPAToken = OPAToken_;
-        opaTokenOnce = true;
     }
     
     /**
