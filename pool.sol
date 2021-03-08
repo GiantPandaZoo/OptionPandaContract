@@ -146,7 +146,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * constructor will fail if the address is illegal.
      */
     // rinkeby
-    IPandaFactory internal constant pandaFactory = IPandaFactory(0xdab0dD1575f9382850c7A97F2BCF50c884e9D279);
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0xb3Bc91A86ED4828Ebce841D1D364f21A0cee4c9F);
     
     // BSC
     //IPandaFactory internal constant pandaFactory = IPandaFactory(0x0D520b65f0D99e87B1369bD2e93c1A9cEFe58a29); 
@@ -156,7 +156,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
     uint256 internal constant SIGMA_UPDATE_PERIOD = 3600; // sigma update period
-    uint256 internal USDT_DECIMALS; // USDT decimals in exponent set in constructor
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -281,7 +280,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
              
         // contract references
         USDTContract = IERC20(pandaFactory.getUSDTContract());
-        USDT_DECIMALS = 10 ** uint256(USDTContract.decimals());
         cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
 
         _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
@@ -899,7 +897,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         (, int latestPrice, , , ) = priceFeed.latestRoundData();
 
         if (latestPrice > 0) { // convert to USDT decimal
-            return uint(latestPrice).mul(USDT_DECIMALS).div(10**uint(priceFeed.decimals()));
+            return uint(latestPrice).mul(10 ** uint256(USDTContract.decimals()))
+                                    .div(10**uint256(priceFeed.decimals()));
         }
         return 0;
     }
