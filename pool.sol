@@ -689,9 +689,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // settle un-distributed OPA in rounds to _opaBalance;
         _settlePooler(msg.sender);
 
-        // premium balance modification
+        // OPA balance modification
         uint amountOPA = _opaBalance[msg.sender];
-        _opaBalance[msg.sender] = 0; // zero premium balance
+        _opaBalance[msg.sender] = 0; // zero OPA balance
         
         // transfer OPA
         OPAToken.safeTransfer(msg.sender, amountOPA);
