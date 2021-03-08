@@ -186,23 +186,25 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     IERC20 public OPAToken;  // OPA token contract
     bool private opaTokenOnce;
 
-
     /**
      * OPA Rewarding
      */
-    /// @dev round index mapping to RoundData.
-    mapping (uint => uint) private _opaAccShares; // accmulated OPA share for pooler in each round
+    /// @dev round index mapping to accumulate share.
+    mapping (uint => uint) private _opaAccShares;
     /// @dev mark pooler's highest settled OPA round.
     mapping (address => uint) private _settledOPARounds;
     /// @dev a monotonic increasing OPA round index, STARTS FROM 1
     uint private _currentOPARound = 1;
     // @dev update period in secs for OPA distribution.
-    uint256 private constant _opaRewardUpdatePeriod = 3600;
+    uint public constant opaRewardUpdatePeriod = 3600;
     /// @dev expected next OPA distribute time
-    uint private _nextOPARewardUpdate = block.timestamp + _opaRewardUpdatePeriod;
-    uint public OPAPerBlock = 10 * 1e18; // block reward for this pool
-    uint private immutable startBlock = block.number; // start block for rewarding
-    uint private lastRewardBlock = block.number; // last OPA reward block;
+    uint private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
+    /// @dev block reward for this pool
+    uint public OPAPerBlock = 10 * 1e18; 
+    // @dev start block for rewarding
+    uint private immutable startBlock = block.number;
+    // @dev last OPA reward block
+    uint private lastRewardBlock = block.number;
 
     /**
      * @dev Modifier to make a function callable only by owner
@@ -445,7 +447,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice update of options, triggered by anyone periodically
      */
     function update() public override {
-        uint assetPrice;
+        // load chainlink price
+        uint assetPrice = getAssetPrice();
 
         // create a memory copy of array
         IOption [] memory options = _options;
@@ -456,21 +459,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // settle all options
         for (uint i = 0;i< options.length;i++) {
             if (block.timestamp >= options[i].expiryDate()) { // expired
-                // lazy evaluation
-                if (assetPrice == 0) {
-                    assetPrice = getAssetPrice();
-                }
                 accManagerRevenue += _settleOption(options[i], assetPrice);
             } else { // mark unexpired by clearning 0
                 options[i] = IOption(0);
             }
         }
         
-        // transfer manager's USDT premium
-        if (accManagerRevenue > 0) {
-            USDTContract.safeTransfer(poolManager, accManagerRevenue);
-        }
-
         // calculate supply for a slot after settlement,
         // notice we must settle options before option reset, otherwise
         // we cannot get a correct slot supply due to COLLATERAL WRITE DOWN
@@ -496,6 +490,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // OPA Reward Update
         if (block.timestamp > _nextOPARewardUpdate) {
             updateOPAReward();
+        }
+        
+        // transfer manager's USDT premium at last
+        if (accManagerRevenue > 0) {
+            USDTContract.safeTransfer(poolManager, accManagerRevenue);
         }
     }
     
@@ -540,7 +539,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
 
         // set the accumulated premiumShare & accumulated OPA share
-        // @dev even if round == 0, and round downflows to 0xfff....fff, the return value wil be 0;
+        // @dev even if round == 0, and round - 1 underflows to 0xfff....fff, the return value wil be 0;
         uint accPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
         option.setRoundAccPremiumShare(round, accPremiumShare);
     }
@@ -555,17 +554,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint roundOPAShare;
         if (poolerTotalSupply > 0 && lastRewardBlock < block.number) {
             uint blocksToReward = block.number.sub(lastRewardBlock);
-
-            // OPA share per seller's token setting:
-            // 50% of block OPA reward is dedicated to all Put or Call pooler.
             uint mintedOPA = OPAPerBlock.mul(blocksToReward);
     
-            roundOPAShare = mintedOPA
-                                    .mul(SHARE_MULTIPLIER)
-                                    .div(poolerTotalSupply);
+            // OPA share per pooler token
+            roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
+                                        .div(poolerTotalSupply);
                                     
-            // mark blocks rewarded;
-            lastRewardBlock += blocksToReward;
+            // mark block rewarded;
+            lastRewardBlock = block.number;
         }
                 
         // accumulate OPA share
@@ -573,7 +569,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
        
         // next round setting                                 
         _currentOPARound++;
-        _nextOPARewardUpdate += _opaRewardUpdatePeriod;
+        _nextOPARewardUpdate += opaRewardUpdatePeriod;
     }
 
     /**
@@ -744,6 +740,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
+                
+        // log settled premium
+        emit PremiumSettled(msg.sender, accountCollateral, premiumSettled);
         
         // OPA settlement
         uint lastSettledOPARound = _settledOPARounds[account];
@@ -756,9 +755,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         _opaBalance[account] += roundOPA;
         // mark highest claimed OPA round
         _settledOPARounds[account] = newSettledOPARound;
-        
-        // log settled premium
-        emit PremiumSettled(msg.sender, accountCollateral, premiumSettled);
     }
     
     /**
