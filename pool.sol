@@ -464,16 +464,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // notice we must settle options before option reset, otherwise
         // we cannot get a correct slot supply due to COLLATERAL WRITE DOWN
         // when multiple options settles at once.
-        if (assetPrice > 0) { // assetPrice non-zero suggests at least one settled option
-            uint slotSupply = _slotSupply(assetPrice);
-            for (uint i = 0;i < options.length;i++) {
-                if (options[i] != IOption(0)) { // we only check expiryDate once, it's expensive.
-                    // reset option with new slot supply
-                    options[i].resetOption(assetPrice, slotSupply);
+        uint slotSupply = _slotSupply(assetPrice);
+        for (uint i = 0;i < options.length;i++) {
+            if (options[i] != IOption(0)) { // we only check expiryDate once, it's expensive.
+                // reset option with new slot supply
+                options[i].resetOption(assetPrice, slotSupply);
 
-                    // sigma: count newly issued options
-                    _sigmaTotalOptions = _sigmaTotalOptions.add(options[i].totalSupply());
-                }
+                // sigma: count newly issued options
+                _sigmaTotalOptions = _sigmaTotalOptions.add(options[i].totalSupply());
             }
         }
 
