@@ -175,7 +175,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     uint private _sigmaSoldOptions;  // sum total options sold in a period
     uint private _sigmaTotalOptions; // sum total options issued
-    uint private _nextSigmaUpdate; // expected next sigma updating time;
+    uint private _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD; // expected next sigma updating time;
     
     // tracking pooler's collateral with
     // the token contract of the pooler;
@@ -285,8 +285,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         USDTContract = IERC20(pandaFactory.getUSDTContract());
         cdfDataContract = CDFDataInterface(pandaFactory.getCDF());
 
-        _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
-        
         // set default poolManager
         poolManager = msg.sender;
     }
