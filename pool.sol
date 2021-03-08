@@ -718,37 +718,40 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
             
-            uint currentRound = option.getRound();
             uint lastSettledRound = option.getSettledRound(account);
+            uint newSettledRound = option.getRound() - 1;
             
             // premium
-            uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
+            uint roundPremium = option.getRoundAccPremiumShare(newSettledRound).sub(option.getRoundAccPremiumShare(lastSettledRound))
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
                                         
             premiumBalance = premiumBalance.add(roundPremium);
 
-            // mark highest claimed round
-            option.setSettledRound(currentRound - 1, account);
+            // mark new settled round
+            option.setSettledRound(newSettledRound, account);
         }
                         
         // log settled premium
         emit PremiumSettled(msg.sender, accountCollateral, premiumBalance.sub(_premiumBalance[account]));
-
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
         
         // OPA settlement
-        uint lastSettledOPARound = _settledOPARounds[account];
-        uint newSettledOPARound = _currentOPARound-1;
-        uint roundOPA = _opaAccShares[newSettledOPARound].sub(_opaAccShares[lastSettledOPARound])
-                                .mul(accountCollateral)
-                                .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
-        
-        // update OPA balance
-        _opaBalance[account] += roundOPA;
-        // mark highest claimed OPA round
-        _settledOPARounds[account] = newSettledOPARound;
+        {
+            uint lastSettledOPARound = _settledOPARounds[account];
+            uint newSettledOPARound = _currentOPARound - 1;
+            
+            // round OPA
+            uint roundOPA = _opaAccShares[newSettledOPARound].sub(_opaAccShares[lastSettledOPARound])
+                                    .mul(accountCollateral)
+                                    .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
+            
+            // update OPA balance
+            _opaBalance[account] += roundOPA;
+            // mark new settled OPA round
+            _settledOPARounds[account] = newSettledOPARound;
+        }
     }
     
     /**
