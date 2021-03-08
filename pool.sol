@@ -857,14 +857,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
 
     /**
-     * @notice set pool manager once
+     * @notice set pool manager
      */
     function setPoolManager(address poolManager_) external override onlyOwner {
         poolManager = poolManager_;
     }
     
     /**
-     * @notice set OPA token once
+     * @notice set OPA token
      */
     function setOPAToken(IERC20 OPAToken_) external override onlyOwner {
         OPAToken = OPAToken_;
