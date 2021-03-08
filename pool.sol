@@ -715,7 +715,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // premium settlement
         uint premiumBalance = _premiumBalance[account];
-        uint premiumSettled;
         
         for (uint i = 0; i < _options.length; i++) {
             IOption option = _options[i];
@@ -727,18 +726,18 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             uint roundPremium = option.getRoundAccPremiumShare(currentRound-1).sub(option.getRoundAccPremiumShare(lastSettledRound))
                                         .mul(accountCollateral)
                                         .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER
+                                        
             premiumBalance = premiumBalance.add(roundPremium);
-            premiumSettled = premiumSettled.add(roundPremium);
 
             // mark highest claimed round
             option.setSettledRound(currentRound - 1, account);
         }
+                        
+        // log settled premium
+        emit PremiumSettled(msg.sender, accountCollateral, premiumBalance.sub(_premiumBalance[account]));
 
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
-                
-        // log settled premium
-        emit PremiumSettled(msg.sender, accountCollateral, premiumSettled);
         
         // OPA settlement
         uint lastSettledOPARound = _settledOPARounds[account];
