@@ -201,8 +201,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
     /// @dev block reward for this pool
     uint public OPAPerBlock = 10 * 1e18; 
-    // @dev start block for rewarding
-    uint private immutable startBlock = block.number;
     // @dev last OPA reward block
     uint private lastRewardBlock = block.number;
 
