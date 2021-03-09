@@ -422,7 +422,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         if (_direction == PoolDirection.CALL) {
             realtimeProfits = _calcProfits(currentPrice, strikePrice, amount)
                                 .mul(currentPrice)
-                                .div(10**uint(assetDecimal));
+                                .div(10**uint(optionContract.decimals()));
         } else {
             realtimeProfits = _calcProfits(currentPrice, strikePrice, amount);
         }
