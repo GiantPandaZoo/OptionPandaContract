@@ -141,6 +141,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // initialization once
     bool private inited;
     
+    // pool direction enum
+    enum PoolDirection{ CALL, PUT }
+    
+    /// @dev pool direction
+    PoolDirection public immutable _direction;
+    
     // option durations
     uint16 [] private _durations = [300,900,1800,2700,3600];
     
@@ -275,10 +281,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function _totalPledged() internal view virtual returns (uint);
 
-    constructor(AggregatorV3Interface priceFeed_, uint8 assetDecimal_) public {
+    constructor(AggregatorV3Interface priceFeed_, uint8 assetDecimal_, PoolDirection direction_) public {
         _owner = msg.sender;
         priceFeed = priceFeed_;
         assetDecimal = assetDecimal_;
+        _direction = direction_;
              
         // contract references
         USDTContract = IERC20(pandaFactory.getUSDTContract());
@@ -915,7 +922,7 @@ contract NativeCallOptionPool is PandaBase {
      * @param priceFeed Chainlink contract for asset price
      */
     constructor(string memory name_, AggregatorV3Interface priceFeed)
-        PandaBase(priceFeed, 18)
+        PandaBase(priceFeed, 18, PoolDirection.CALL)
         public {
             _name = name_;
             // creation of pooler token
@@ -1012,18 +1019,18 @@ contract NativeCallOptionPool is PandaBase {
  */
 contract ERC20CallOptionPool is PandaBase {
     string private _name;
-    IERC20 public AssetContract;
+    IERC20 public assetContract;
 
     /**
      * @param priceFeed Chainlink contract for asset price
-     * @param AssetContract_ ERC20 asset contract address
+     * @param assetContract_ ERC20 asset contract address
      */
-    constructor(string memory name_, IERC20 AssetContract_, AggregatorV3Interface priceFeed)
-        PandaBase(priceFeed, AssetContract_.decimals())
+    constructor(string memory name_, IERC20 assetContract_, AggregatorV3Interface priceFeed)
+        PandaBase(priceFeed, assetContract_.decimals(), PoolDirection.CALL)
         public { 
             _name = name_;
-            AssetContract = AssetContract_;
-            poolerTokenContract = pandaFactory.createPoolerToken(AssetContract_.decimals(), IOptionPool(this));
+            assetContract = assetContract_;
+            poolerTokenContract = pandaFactory.createPoolerToken(assetContract.decimals(), IOptionPool(this));
         }
 
     /**
@@ -1038,7 +1045,7 @@ contract ERC20CallOptionPool is PandaBase {
      */
     function depositAsset(uint256 amountAsset) external whenPoolerNotPaused {
         require(amountAsset > 0, "0 value");
-        AssetContract.safeTransferFrom(msg.sender, address(this), amountAsset);
+        assetContract.safeTransferFrom(msg.sender, address(this), amountAsset);
         poolerTokenContract.mint(msg.sender, amountAsset);
         collateral = collateral.add(amountAsset);
         
@@ -1059,7 +1066,7 @@ contract ERC20CallOptionPool is PandaBase {
         collateral = collateral.sub(amountAsset);
 
         // transfer asset back to msg.sender
-        AssetContract.safeTransfer(msg.sender, amountAsset);
+        assetContract.safeTransfer(msg.sender, amountAsset);
         
         // log 
         emit Withdraw(msg.sender, amountAsset);
@@ -1078,7 +1085,7 @@ contract ERC20CallOptionPool is PandaBase {
      * @dev send profits back to account
      */
     function _sendProfits(address payable account, uint256 amount) internal override {
-        AssetContract.safeTransfer(account, amount);
+        assetContract.safeTransfer(account, amount);
     }
 
     /**
@@ -1124,7 +1131,7 @@ contract PutOptionPool is PandaBase {
      * @param assetDecimal the decimal of the price
      */
     constructor(string memory name_, uint8 assetDecimal, AggregatorV3Interface priceFeed)
-        PandaBase(priceFeed, assetDecimal)
+        PandaBase(priceFeed, assetDecimal, PoolDirection.PUT)
         public { 
             _name = name_;
             assetPriceUnit = 10 ** uint(assetDecimal);
