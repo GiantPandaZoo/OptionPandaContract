@@ -912,7 +912,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 contract NativeCallOptionPool is PandaBase {
     string private _name;
     /**
-     * @param priceFeed Chainlink contract for getting Ether price
+     * @param priceFeed Chainlink contract for asset price
      */
     constructor(string memory name_, AggregatorV3Interface priceFeed)
         PandaBase(priceFeed, 18)
@@ -1015,7 +1015,8 @@ contract ERC20CallOptionPool is PandaBase {
     IERC20 public AssetContract;
 
     /**
-     * @param priceFeed Chainlink contract for getting Ether price
+     * @param priceFeed Chainlink contract for asset price
+     * @param AssetContract_ ERC20 asset contract address
      */
     constructor(string memory name_, IERC20 AssetContract_, AggregatorV3Interface priceFeed)
         PandaBase(priceFeed, AssetContract_.decimals())
@@ -1119,7 +1120,8 @@ contract PutOptionPool is PandaBase {
     uint private immutable assetPriceUnit;
     
     /**
-     * @param priceFeed Chainlink contract for getting Ether price
+     * @param priceFeed Chainlink contract for asset price
+     * @param assetDecimal the decimal of the price
      */
     constructor(string memory name_, uint8 assetDecimal, AggregatorV3Interface priceFeed)
         PandaBase(priceFeed, assetDecimal)
@@ -1220,7 +1222,6 @@ contract PutOptionPool is PandaBase {
      * @notice get current new option supply
      */
     function _slotSupply(uint assetPrice) internal view override returns(uint) {
-        // reset the contract
         // Formula : (collateral / numOptions) * utilizationRate / 100 / (assetPrice/ price unit)
        return collateral.mul(utilizationRate)
                             .mul(assetPriceUnit)
