@@ -412,8 +412,24 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // notice the CDF is already multiplied by cdfDataContract.Amplifier()
         uint cdf = cdfDataContract.CDF(duration, _sigmaToIndex());
-        // note the price is for 10 ** option decimals
-        return amount * getAssetPrice() * cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
+        
+        // calculate premium for option
+        uint currentPrice = getAssetPrice();
+        uint strikePrice = optionContract.strikePrice();
+
+        // calculate USDT profits based on current price
+        uint realtimeProfits;
+        if (_direction == PoolDirection.CALL) {
+            realtimeProfits = _calcProfits(currentPrice, strikePrice, amount)
+                                .mul(currentPrice)
+                                .div(10**uint(assetDecimal));
+        } else {
+            realtimeProfits = _calcProfits(currentPrice, strikePrice, amount);
+        }
+        
+        // price in the realtime profits to avoid arbitrage.
+        // @dev note the price is for 10 ** option decimals
+        return realtimeProfits + amount * currentPrice* cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
     }
 
     /**
