@@ -420,16 +420,17 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // calculate USDT profits based on current price
         uint realtimeProfits;
         if (_direction == PoolDirection.CALL) {
+            // @dev convert asset profits to USDT at current price
             realtimeProfits = _calcProfits(currentPrice, strikePrice, amount)
                                 .mul(currentPrice)
-                                .div(10**uint(optionContract.decimals()));
+                                .div(10 ** uint(optionContract.decimals()));
         } else {
             realtimeProfits = _calcProfits(currentPrice, strikePrice, amount);
         }
         
         // price in the realtime profits to avoid arbitrage.
         // @dev note the price is for 10 ** option decimals
-        return realtimeProfits + amount * currentPrice* cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
+        return realtimeProfits + amount * currentPrice * cdf  / (10 ** uint(optionContract.decimals())) / cdfDataContract.Amplifier();
     }
 
     /**
