@@ -128,28 +128,28 @@ contract Option is Context, IOption {
     }
     
     /**
-     * @dev get round premium share
+     * @dev get round accumulated premium share
      */
     function getRoundAccPremiumShare(uint r) external view override returns(uint) {
         return rounds[r].accPremiumShare;
     }
     
     /**
-     * @dev set round premium share
+     * @dev set round accumulated premium share
      */
     function setRoundAccPremiumShare(uint r, uint accPremiumShare) external override onlyPool {
         rounds[r].accPremiumShare = accPremiumShare;
     }
 
     /**
-     * @dev get all unclaimed profits rounds for account
+     * @dev get the unclaimed profits round for an account
      */
     function getUnclaimedProfitsRound(address account) external override view returns (uint) {
         return unclaimedProfitsRounds[account];
     }
 
     /**
-     * @dev set unclaimed profits round for account
+     * @dev set a unclaimed profits round for an account
      */
     function setUnclaimedProfitsRound(uint r, address account) external override onlyPool {
         unclaimedProfitsRounds[account] = r;
@@ -184,7 +184,7 @@ contract Option is Context, IOption {
     }
     
    /**
-     * @dev add premium fee in USDT
+     * @dev get current round
      */
     function getRound() external override view returns (uint) {
         return currentRound;
