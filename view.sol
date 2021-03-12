@@ -7,26 +7,30 @@ import "library.sol";
 contract PandaView {
     using SafeMath for uint256;
     
-    uint constant monthSecs = 30 * 24 * 60 * 60;
-    
-    struct RoundData {
+    struct BuyerData {
         uint256 balance;
         uint expiryDate;
         uint strikePrice;
         uint settlePrice;
     }
     
+    struct PoolerData {
+        uint expiryDate;
+        uint totalPremiums;
+        uint accPremiumShare;
+    }
+    
     /**
-     * get a buyer's round in recent month
+     * @dev get a buyer's rounds data between [now - duration, now]
      */
-    function getBuyerRounds(IOption option, address account) external view returns(RoundData[] memory) {
+    function getBuyerRounds(IOption option, address account, uint ago) external view returns(BuyerData[] memory) {
         uint duration = option.getDuration();
-        uint maxRounds = monthSecs / duration;
+        uint maxRounds = ago / duration;
         
-        RoundData[] memory rounds = new RoundData[](maxRounds);
+        BuyerData[] memory rounds = new BuyerData[](maxRounds);
         
         uint roundCount;
-        uint monthAgo = block.timestamp.sub(monthSecs);
+        uint monthAgo = block.timestamp.sub(ago);
         
         for (uint r = option.getRound(); r > 0 ;r--) {
             uint expiryDate = option.getRoundExpiryDate(r);
@@ -44,13 +48,48 @@ contract PandaView {
             }
         }
         
-        // copy to a smaller memory array, slicing
+        // copy to a smaller memory array
         if (roundCount < maxRounds) {
-            RoundData[] memory rs = new RoundData[](roundCount);
+            BuyerData[] memory rs = new BuyerData[](roundCount);
             for (uint i = 0;i<rs.length; i++) {
                 rs[i] = rounds[i];
             }
-            // return the array
+            return rs;
+        }
+        
+        return rounds;
+    }
+    
+    /**
+     * @dev get a poolers's round data between [now - duration, now]
+     */
+    function getPoolerRounds(IOption option, uint ago) external view returns(PoolerData[] memory) {
+        uint duration = option.getDuration();
+        uint maxRounds = ago / duration;
+        
+        PoolerData[] memory rounds = new PoolerData[](maxRounds);
+        
+        uint roundCount;
+        uint monthAgo = block.timestamp.sub(ago);
+        
+        for (uint r = option.getRound(); r > 0 ;r--) {
+            uint expiryDate = option.getRoundExpiryDate(r);
+            if (expiryDate < monthAgo){
+                break;
+            }
+        
+            rounds[roundCount].expiryDate = expiryDate;
+            rounds[roundCount].totalPremiums = option.getRoundTotalPremiums(r);
+            rounds[roundCount].accPremiumShare = option.getRoundAccPremiumShare(r);
+            roundCount++;
+        }
+        
+        // copy to a smaller memory array
+        if (roundCount < maxRounds) {
+            PoolerData[] memory rs = new PoolerData[](roundCount);
+            for (uint i = 0;i<rs.length; i++) {
+                rs[i] = rounds[i];
+            }
             return rs;
         }
         
