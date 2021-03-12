@@ -30,11 +30,11 @@ contract PandaView {
         BuyerData[] memory rounds = new BuyerData[](maxRounds);
         
         uint roundCount;
-        uint monthAgo = block.timestamp.sub(ago);
+        uint sometimeAgo = block.timestamp.sub(ago);
         
         for (uint r = option.getRound(); r > 0 ;r--) {
             uint expiryDate = option.getRoundExpiryDate(r);
-            if (expiryDate < monthAgo){
+            if (expiryDate < sometimeAgo){
                 break;
             }
             
@@ -70,11 +70,11 @@ contract PandaView {
         PoolerData[] memory rounds = new PoolerData[](maxRounds);
         
         uint roundCount;
-        uint monthAgo = block.timestamp.sub(ago);
+        uint sometimeAgo = block.timestamp.sub(ago);
         
         for (uint r = option.getRound(); r > 0 ;r--) {
             uint expiryDate = option.getRoundExpiryDate(r);
-            if (expiryDate < monthAgo){
+            if (expiryDate < sometimeAgo){
                 break;
             }
         
