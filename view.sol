@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
-pragma experimental ABIEncoderV2;
 
 import "library.sol";
 
@@ -23,10 +22,13 @@ contract PandaView {
     /**
      * @dev get a buyer's rounds data between [now - duration, now]
      */
-    function getBuyerRounds(IOption option, address account, uint ago) external view returns(BuyerData[] memory) {
-        uint duration = option.getDuration();
-        uint maxRounds = ago / duration;
-        
+    function getBuyerRounds(IOption option, address account, uint ago) external view returns(
+        uint256 [] memory balances, 
+        uint [] memory expiryDates, 
+        uint [] memory strikePrices,
+        uint [] memory settlePrices) 
+        {
+        uint maxRounds = ago / option.getDuration();
         BuyerData[] memory rounds = new BuyerData[](maxRounds);
         
         uint roundCount;
@@ -48,25 +50,29 @@ contract PandaView {
             }
         }
         
-        // copy to a smaller memory array
-        if (roundCount < maxRounds) {
-            BuyerData[] memory rs = new BuyerData[](roundCount);
-            for (uint i = 0; i < roundCount; i++) {
-                rs[i] = rounds[i];
-            }
-            return rs;
-        }
+        // flatten struct
+        balances = new uint256[](roundCount);
+        expiryDates = new uint[](roundCount);
+        strikePrices = new uint[](roundCount);
+        settlePrices = new uint[](roundCount);
         
-        return rounds;
+        for (uint i = 0; i < roundCount; i++) {
+            balances[i] = rounds[i].balance;
+            expiryDates[i] = rounds[i].expiryDate;
+            strikePrices[i] = rounds[i].strikePrice;
+            settlePrices[i] = rounds[i].settlePrice;
+        }
     }
     
     /**
      * @dev get a poolers's round data between [now - duration, now]
      */
-    function getPoolerRounds(IOption option, uint ago) external view returns(PoolerData[] memory) {
-        uint duration = option.getDuration();
-        uint maxRounds = ago / duration;
-        
+    function getPoolerRounds(IOption option, uint ago) external view returns(
+        uint [] memory expiryDates,
+        uint [] memory totalPremiums,
+        uint [] memory accPremiumShares) 
+        {
+        uint maxRounds = ago / option.getDuration();
         PoolerData[] memory rounds = new PoolerData[](maxRounds);
         
         uint roundCount;
@@ -84,15 +90,15 @@ contract PandaView {
             roundCount++;
         }
         
-        // copy to a smaller memory array
-        if (roundCount < maxRounds) {
-            PoolerData[] memory rs = new PoolerData[](roundCount);
-            for (uint i = 0; i < roundCount; i++) {
-                rs[i] = rounds[i];
-            }
-            return rs;
-        }
+        // flatten struct
+        expiryDates = new uint[](roundCount);
+        totalPremiums = new uint[](roundCount);
+        accPremiumShares = new uint[](roundCount);
         
-        return rounds;
+        for (uint i = 0; i < roundCount; i++) {
+            expiryDates[i] = rounds[i].expiryDate;
+            totalPremiums[i] = rounds[i].totalPremiums;
+            accPremiumShares[i] = rounds[i].accPremiumShare;
+        }
     }
 }
