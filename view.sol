@@ -51,7 +51,7 @@ contract PandaView {
         // copy to a smaller memory array
         if (roundCount < maxRounds) {
             BuyerData[] memory rs = new BuyerData[](roundCount);
-            for (uint i = 0;i<rs.length; i++) {
+            for (uint i = 0; i < roundCount; i++) {
                 rs[i] = rounds[i];
             }
             return rs;
@@ -87,7 +87,7 @@ contract PandaView {
         // copy to a smaller memory array
         if (roundCount < maxRounds) {
             PoolerData[] memory rs = new PoolerData[](roundCount);
-            for (uint i = 0;i<rs.length; i++) {
+            for (uint i = 0; i < roundCount; i++) {
                 rs[i] = rounds[i];
             }
             return rs;
