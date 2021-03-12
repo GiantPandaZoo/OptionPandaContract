@@ -7,6 +7,7 @@ contract PandaView {
     using SafeMath for uint256;
     
     struct BuyerData {
+        uint round;
         uint256 balance;
         uint expiryDate;
         uint strikePrice;
@@ -21,8 +22,12 @@ contract PandaView {
     
     /**
      * @dev get a buyer's rounds data between [now - duration, now]
+     * @param option the option contract to collect.
+     * @param account collect position information for this account.
+     * @param ago collect the information from 'ago' seconds until now.
      */
     function getBuyerRounds(IOption option, address account, uint ago) external view returns(
+        uint [] memory rs,
         uint256 [] memory balances, 
         uint [] memory expiryDates, 
         uint [] memory strikePrices,
@@ -32,16 +37,17 @@ contract PandaView {
         BuyerData[] memory rounds = new BuyerData[](maxRounds);
         
         uint roundCount;
-        uint sometimeAgo = block.timestamp.sub(ago);
+        ago = block.timestamp.sub(ago);
         
         for (uint r = option.getRound(); r > 0 ;r--) {
             uint expiryDate = option.getRoundExpiryDate(r);
-            if (expiryDate < sometimeAgo){
+            if (expiryDate < ago){
                 break;
             }
             
             uint256 balance = option.getRoundBalanceOf(r, account);
             if (balance > 0) { // found position
+                rounds[roundCount].round = r;
                 rounds[roundCount].balance = balance;
                 rounds[roundCount].expiryDate = expiryDate;
                 rounds[roundCount].strikePrice = option.getRoundStrikePrice(r);
@@ -51,12 +57,14 @@ contract PandaView {
         }
         
         // flatten struct
+        rs = new uint256[](roundCount);
         balances = new uint256[](roundCount);
         expiryDates = new uint[](roundCount);
         strikePrices = new uint[](roundCount);
         settlePrices = new uint[](roundCount);
         
         for (uint i = 0; i < roundCount; i++) {
+            rs[i] = rounds[i].round;
             balances[i] = rounds[i].balance;
             expiryDates[i] = rounds[i].expiryDate;
             strikePrices[i] = rounds[i].strikePrice;
@@ -66,6 +74,8 @@ contract PandaView {
     
     /**
      * @dev get a poolers's round data between [now - duration, now]
+     * @param option the option contract to collect.
+     * @param ago collect the information from 'ago' seconds until now.
      */
     function getPoolerRounds(IOption option, uint ago) external view returns(
         uint [] memory expiryDates,
@@ -76,11 +86,11 @@ contract PandaView {
         PoolerData[] memory rounds = new PoolerData[](maxRounds);
         
         uint roundCount;
-        uint sometimeAgo = block.timestamp.sub(ago);
+        ago = block.timestamp.sub(ago);
         
         for (uint r = option.getRound(); r > 0 ;r--) {
             uint expiryDate = option.getRoundExpiryDate(r);
-            if (expiryDate < sometimeAgo){
+            if (expiryDate < ago){
                 break;
             }
         
