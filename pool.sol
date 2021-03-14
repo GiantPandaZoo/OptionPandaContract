@@ -163,7 +163,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint256 public collateral; // collaterals in this pool
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
-    uint256 internal constant SIGMA_UPDATE_PERIOD = 3600; // sigma update period
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -183,7 +182,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     uint256 private _sigmaSoldOptions;  // sum total options sold in a period
     uint256 private _sigmaTotalOptions; // sum total options issued
-    uint256 private _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD; // expected next sigma updating time;
+    uint256 private _nextHourlyUpdate = block.timestamp + 3600; // expected next hourly updating time;
     
     // tracking pooler's collateral with
     // the token contract of the pooler;
@@ -197,17 +196,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     /// @dev block reward for this pool
     uint256 public OPABlockReward = 10 * 1e18; 
-    // @dev update period in secs for OPA distribution.
-    uint256 public constant opaRewardUpdatePeriod = 3600;
-    
+
     /// @dev round index mapping to accumulate share.
     mapping (uint => uint) private _opaAccShares;
     /// @dev mark pooler's highest settled OPA round.
     mapping (address => uint) private _settledOPARounds;
     /// @dev a monotonic increasing OPA round index, STARTS FROM 1
     uint256 private _currentOPARound = 1;
-    /// @dev expected next OPA distribute time
-    uint256 private _nextOPARewardUpdate = block.timestamp + opaRewardUpdatePeriod;
     // @dev last OPA reward block
     uint256 private _lastRewardBlock = block.number;
 
@@ -454,7 +449,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice get next update time
      */
     function getNextUpdateTime() public override view returns (uint) {
-        uint nextUpdateTime =_nextSigmaUpdate;
+        uint nextUpdateTime =_nextHourlyUpdate;
         
         for (uint i = 0;i< _options.length;i++) {
             if (_options[i].expiryDate() < nextUpdateTime) {
@@ -503,15 +498,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
 
         // should update sigma while sigma period expires
-        if (block.timestamp > _nextSigmaUpdate) {
+        if (block.timestamp > _nextHourlyUpdate) {
             updateSigma();
+            updateOPAReward();
+                    
+            // set next update time to one hour later
+            _nextHourlyUpdate += 3600;
         }
 
-        // OPA Reward Update
-        if (block.timestamp > _nextOPARewardUpdate) {
-            updateOPAReward();
-        }
-        
         // transfer manager's USDT premium at last
         if (accManagerRevenue > 0) {
             USDTContract.safeTransfer(poolManager, accManagerRevenue);
@@ -588,7 +582,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
        
         // next round setting                                 
         _currentOPARound++;
-        _nextOPARewardUpdate += opaRewardUpdatePeriod;
     }
 
     /**
@@ -609,9 +602,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             }
             
             sigma = s;
-            
-            // log sigma update 
-            emit SigmaUpdate(s, rate);
         }
         
         // new metrics
@@ -634,9 +624,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // set back to contract storage
         _sigmaTotalOptions = sigmaTotalOptions;
         _sigmaSoldOptions = sigmaSoldOptions;
-        
-        // set next update time to one hour later
-        _nextSigmaUpdate = block.timestamp + SIGMA_UPDATE_PERIOD;
     }
     
     /**
@@ -647,8 +634,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         require (newSigma >= 15 && newSigma <= 145, "[15,145]");
         
         sigma = newSigma;
-        
-        emit SigmaSet(sigma);
     }
 
     /**

@@ -651,16 +651,6 @@ interface IOptionPool {
     event Buy(address indexed account, address indexed optionContract, uint round, uint amount, uint premiumCost);
 
     /**
-     * @dev settle debug log
-     */
-    event SettleLog(address indexed optionContract, uint round);
-    
-    /**
-     * @dev sigma update log
-     */
-    event SigmaUpdate(uint sigma, uint rate);
-    
-    /**
      * @dev Profits Claiming log
      */
      event ProfitsClaim(address indexed account, uint amount);
@@ -684,11 +674,6 @@ interface IOptionPool {
      * @dev ownership transfer event log
      */
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /**
-     * @dev sigma set log
-     */
-    event SigmaSet(uint sigma);
 }
 
 
