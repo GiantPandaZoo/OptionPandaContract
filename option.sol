@@ -15,6 +15,8 @@ contract Option is Context, IOption {
     struct RoundData {
         mapping (address => uint256) balances;
         mapping (address => mapping (address => uint256)) allowances;
+        mapping (address => uint256) paidPremium;
+        
         uint256 totalSupply;
         uint expiryDate;
         uint settlePrice; // settle price of this round, and is the strike price for next round.
@@ -172,8 +174,16 @@ contract Option is Context, IOption {
     /**
      * @dev add premium fee to current round in USDT
      */
-    function addPremium(uint256 amountUSDT) external override onlyPool {
+    function addPremium(address account, uint256 amountUSDT) external override onlyPool {
         rounds[currentRound].totalPremiums += amountUSDT;
+        rounds[currentRound].paidPremium[account] += amountUSDT;
+    }
+    
+    /**
+     * @dev get paid premium for an account in round
+     */
+    function getRoundAccountPaidPremiums(uint r, address account) external view override returns(uint) {
+        return rounds[r].paidPremium[account];
     }
     
     /**

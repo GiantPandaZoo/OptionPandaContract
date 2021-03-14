@@ -364,7 +364,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         optionContract.safeTransfer(msg.sender, amount);
 
         // credit premium to option contract
-        optionContract.addPremium(premium);
+        optionContract.addPremium(msg.sender, premium);
         
         // sigma: count sold options
         _sigmaSoldOptions = _sigmaSoldOptions.add(amount);

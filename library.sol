@@ -579,6 +579,7 @@ interface IOption is IERC20 {
     function getRoundStrikePrice(uint r) external view returns(uint);
     function getRoundSettlePrice(uint r) external view returns(uint);
     function getRoundTotalPremiums(uint r) external view returns(uint);
+    function getRoundAccountPaidPremiums(uint r, address account) external view returns(uint);
     function getRoundBalanceOf(uint r, address account) external view returns (uint256);
     function getRoundAccPremiumShare(uint r) external view returns(uint);
     function setRoundAccPremiumShare(uint r, uint premiumShare) external;
@@ -588,7 +589,7 @@ interface IOption is IERC20 {
     function setSettledRound(uint r, address account) external;
 
     // current round
-    function addPremium(uint256 amountUSDT) external;
+    function addPremium(address account, uint256 amountUSDT) external;
     function totalPremiums() external view returns (uint);
     function expiryDate() external view returns (uint);
     function strikePrice() external view returns (uint);
