@@ -79,6 +79,7 @@ contract PandaView {
      */
     function getPoolerRounds(IOption option, uint ago) external view returns(
         uint [] memory expiryDates,
+        uint [] memory totalPremiums,
         uint [] memory accPremiumShares) 
         {
         uint maxRounds = ago / option.getDuration();
@@ -94,16 +95,19 @@ contract PandaView {
             }
         
             rounds[roundCount].expiryDate = expiryDate;
+            rounds[roundCount].totalPremiums = option.getRoundTotalPremiums(r);
             rounds[roundCount].accPremiumShare = option.getRoundAccPremiumShare(r);
             roundCount++;
         }
         
         // flatten struct
         expiryDates = new uint[](roundCount);
+        totalPremiums = new uint[](roundCount);
         accPremiumShares = new uint[](roundCount);
         
         for (uint i = 0; i < roundCount; i++) {
             expiryDates[i] = rounds[i].expiryDate;
+            totalPremiums[i] = rounds[i].totalPremiums;
             accPremiumShares[i] = rounds[i].accPremiumShare;
         }
     }

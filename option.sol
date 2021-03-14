@@ -16,6 +16,7 @@ contract Option is Context, IOption {
         mapping (address => uint256) balances;
         mapping (address => mapping (address => uint256)) allowances;
         mapping (address => uint256) paidPremium;
+        address [] buyers;
         
         uint256 totalSupply;
         uint expiryDate;
@@ -25,8 +26,8 @@ contract Option is Context, IOption {
         uint accPremiumShare; // accumulated premium share for a pooler
     }
     
-    /// @dev added extra round index to all mapping
-    mapping (uint => RoundData) private rounds;
+    /// @dev all rounds
+    RoundData[] private rounds;
 
     /// @dev buyer's latest unsettled round
     mapping (address => uint) private unclaimedProfitsRounds;
@@ -34,14 +35,17 @@ contract Option is Context, IOption {
     /// @dev mark pooler's highest settled round for a pooler.
     mapping (address => uint) private settledRounds;
     
-    uint private currentRound; // a monotonic increasing round
-
+    /// @dev a monotonic increasing round
+    uint private currentRound; 
+    
+    /// @dev option decimal should be identical asset decimal
     uint8 private _decimals;
 
-    /// @dev option related variables;
-    uint private _duration; // the duration of this option, cannot be changed
+    /// @dev the duration of this option, cannot be changed
+    uint private immutable _duration;
 
-    IOptionPool immutable private _pool; // pool contract address
+    /// @dev pool contract address
+    IOptionPool immutable private _pool; 
 
     modifier onlyPool() {
         require(msg.sender == address(_pool), "Option: access restricted to owner");
@@ -63,27 +67,46 @@ contract Option is Context, IOption {
         // option settings
         _duration = duration_; // set duration once
         _pool = poolContract;
+        
+        // push round 0
+        RoundData memory zero;
+        rounds.push(zero);
     }
 
     /*
      * @dev only can reset this option if expiryDate has reached
      */
     function resetOption(uint strikePrice_, uint newSupply) external override onlyPool {
-        // create a memory copy of round;
-        uint r = currentRound;
+        // load current round to r
+        uint r = rounds.length-1;
         // record settle price
         rounds[r].settlePrice = strikePrice_;
         
-        // round changing for each resetting
+        // kill storage to refund gas
+        delete rounds[r].totalSupply;
+        delete rounds[r].balances[address(_pool)];
+        // loop to delete buyers paidPremium
+        for (uint i=0;i<rounds[r].buyers.length;i++) {
+            delete rounds[r].paidPremium[rounds[r].buyers[i]];
+        }
+        // delete entire buyers array
+        delete rounds[r];
+        
+        // increase r for new round
         r++;
+        
+        // push empty data to rounds array
+        RoundData memory newRoundData;
+        // push to rounds array
+        rounds.push(newRoundData);
         
         // setting new round parameters
         rounds[r].expiryDate = block.timestamp + _duration;
         rounds[r].totalSupply = newSupply;
         rounds[r].balances[address(_pool)] = newSupply;
-
-        // set back r to round
-        currentRound = r;
+        
+        // set currentRound for readability
+        currentRound = rounds.length - 1;
     }
 
     /**
@@ -177,6 +200,7 @@ contract Option is Context, IOption {
     function addPremium(address account, uint256 amountUSDT) external override onlyPool {
         rounds[currentRound].totalPremiums += amountUSDT;
         rounds[currentRound].paidPremium[account] += amountUSDT;
+        rounds[currentRound].buyers.push(account);
     }
     
     /**
@@ -447,17 +471,6 @@ contract Option is Context, IOption {
 
         rounds[currentRound].allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
-    }
-
-    /**
-     * @dev Sets {decimals} to a value other than the default one of 18.
-     *
-     * WARNING: This function should only be called from the constructor. Most
-     * applications that interact with token contracts will not expect
-     * {decimals} to ever change, and may work incorrectly if it does.
-     */
-    function _setupDecimals(uint8 decimals_) internal {
-        _decimals = decimals_;
     }
 
     /**
