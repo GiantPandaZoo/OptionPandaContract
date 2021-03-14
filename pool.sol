@@ -347,17 +347,16 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         require (optionContract.getRound() == round, "mismatch");
         // check remaing options
         require(optionContract.balanceOf(address(this)) >= amount, "soldout");
-
+        
         // calculate premium cost
         uint premium = premiumCost(amount, optionContract);
-        require(premium > 0, "too less");
-
+        
         // transfer premium USDTs to this pool
         USDTContract.safeTransferFrom(msg.sender, address(this), premium);
-
+        
         // transfer options to msg.sender
         optionContract.safeTransfer(msg.sender, amount);
-
+        
         // credit premium to option contract
         optionContract.addPremium(msg.sender, premium);
         
@@ -855,13 +854,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint strikePrice = option.getRoundStrikePrice(unclaimedRound);
         uint256 optionAmount = option.getRoundBalanceOf(unclaimedRound, account);
         uint256 profits = _calcProfits(settlePrice, strikePrice, optionAmount);
-        
+
         // add profits to balance;
         _profitsBalance[account] += profits;
         
         // set current round unclaimed
         option.setUnclaimedProfitsRound(currentRound, account);
-        
+
         // log settled profits
         emit ProfitsSettled(msg.sender, address(option), unclaimedRound, profits);
     }
