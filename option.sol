@@ -127,7 +127,9 @@ contract Option is Context, IOption {
      * @dev get strike price from round r
      */
     function getRoundStrikePrice(uint r) external override view returns(uint) {
-        // @dev assume uint(-1) or 0xfff...fff(256bit) is also 0
+        if (r == 0) {
+            return 0; 
+        }
         return rounds[r-1].settlePrice;
     }
     

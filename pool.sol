@@ -552,9 +552,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
 
         // set the accumulated premiumShare
-        // @dev even if round == 0, and round - 1 underflows to 0xfff....fff, the return value wil be 0;
-        uint accPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
-        option.setRoundAccPremiumShare(round, accPremiumShare);
+        if (round > 0) {
+            roundPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
+        }
+        option.setRoundAccPremiumShare(round, roundPremiumShare);
     }
     
     /**
