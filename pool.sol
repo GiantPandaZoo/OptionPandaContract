@@ -497,7 +497,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             }
         }
 
-        // should update sigma while sigma period expires
+        // other hourly updates
         if (block.timestamp > _nextHourlyUpdate) {
             updateSigma();
             updateOPAReward();
