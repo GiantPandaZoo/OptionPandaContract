@@ -85,11 +85,6 @@ contract Option is Context, IOption {
         // kill storage to refund gas
         delete rounds[r].totalSupply;
         delete rounds[r].balances[address(_pool)];
-        // loop to delete buyers paidPremium
-        uint numBuyers = rounds[r].buyers.length;
-        for (uint i=0;i<numBuyers;i++) {
-            delete rounds[r].paidPremium[rounds[r].buyers[i]];
-        }
         // delete entire buyers array
         delete rounds[r].buyers;
         
