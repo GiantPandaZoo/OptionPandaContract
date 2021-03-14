@@ -16,7 +16,6 @@ contract Option is Context, IOption {
         mapping (address => uint256) balances;
         mapping (address => mapping (address => uint256)) allowances;
         mapping (address => uint256) paidPremium;
-        address [] buyers;
         
         uint256 totalSupply;
         uint expiryDate;
@@ -69,8 +68,7 @@ contract Option is Context, IOption {
         _pool = poolContract;
         
         // push round 0
-        RoundData memory zero;
-        rounds.push(zero);
+        rounds.push();
     }
 
     /*
@@ -85,16 +83,12 @@ contract Option is Context, IOption {
         // kill storage to refund gas
         delete rounds[r].totalSupply;
         delete rounds[r].balances[address(_pool)];
-        // delete entire buyers array
-        delete rounds[r].buyers;
-        
+
         // increase r for new round
         r++;
         
-        // push empty data to rounds array
-        RoundData memory newRoundData;
         // push to rounds array
-        rounds.push(newRoundData);
+        rounds.push();
         
         // setting new round parameters
         rounds[r].expiryDate = block.timestamp + _duration;
@@ -102,7 +96,7 @@ contract Option is Context, IOption {
         rounds[r].balances[address(_pool)] = newSupply;
         
         // set currentRound for readability
-        currentRound = rounds.length - 1;
+        currentRound = r;
     }
 
     /**
@@ -198,7 +192,6 @@ contract Option is Context, IOption {
     function addPremium(address account, uint256 amountUSDT) external override onlyPool {
         rounds[currentRound].totalPremiums += amountUSDT;
         rounds[currentRound].paidPremium[account] += amountUSDT;
-        rounds[currentRound].buyers.push(account);
     }
     
     /**
