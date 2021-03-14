@@ -86,11 +86,12 @@ contract Option is Context, IOption {
         delete rounds[r].totalSupply;
         delete rounds[r].balances[address(_pool)];
         // loop to delete buyers paidPremium
-        for (uint i=0;i<rounds[r].buyers.length;i++) {
+        uint numBuyers = rounds[r].buyers.length;
+        for (uint i=0;i<numBuyers;i++) {
             delete rounds[r].paidPremium[rounds[r].buyers[i]];
         }
         // delete entire buyers array
-        delete rounds[r];
+        delete rounds[r].buyers;
         
         // increase r for new round
         r++;
