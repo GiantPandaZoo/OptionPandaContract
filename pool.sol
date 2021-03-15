@@ -158,7 +158,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     //IPandaFactory internal constant pandaFactory = IPandaFactory(0xC3454e6A1dAB4a14bD5f90a1458bE5eF8046b49C);
     
     // BSC
-    IPandaFactory internal constant pandaFactory = IPandaFactory(0x47331787f4196EC36343dc877C910a24e28f44F7); 
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0x85A6C724b21a3150035c0A73C584bDC716E10Faa); 
     
     uint256 public collateral; // collaterals in this pool
     
