@@ -505,7 +505,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                 options[i].resetOption(assetPrice, slotSupply);
 
                 // sigma: count newly issued options
-                _sigmaTotalOptions = _sigmaTotalOptions.add(options[i].totalSupply());
+                _sigmaTotalOptions = _sigmaTotalOptions.add(slotSupply);
             }
         }
 
