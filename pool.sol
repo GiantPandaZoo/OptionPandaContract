@@ -561,7 +561,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // substract collateral
         // buyer's profits is pooler's loss
-        collateral = collateral.sub(totalProfits);
+        if (totalProfits > 0) {
+            collateral = collateral.sub(totalProfits);
+        }
 
         // settle preimum dividends
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
@@ -580,7 +582,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                                 .div(poolerTotalSupply);
         }
 
-        // set the accumulated premiumShare
+        // set the accumulated premiumShare if round > 0
         if (round > 0) {
             roundPremiumShare = roundPremiumShare.add(option.getRoundAccPremiumShare(round-1));
         }
