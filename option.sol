@@ -17,7 +17,6 @@ contract Option is Context, IOption {
         mapping (address => mapping (address => uint256)) allowances;
         mapping (address => uint256) paidPremium;
         
-        uint256 totalSupply;
         uint expiryDate;
         uint settlePrice; // settle price of this round, and is the strike price for next round.
         
@@ -37,6 +36,9 @@ contract Option is Context, IOption {
     /// @dev a monotonic increasing round
     uint private currentRound; 
     
+    // @dev current round total supply
+    uint256 _totalSupply;
+
     /// @dev option decimal should be identical asset decimal
     uint8 private _decimals;
 
@@ -81,7 +83,6 @@ contract Option is Context, IOption {
         rounds[r].settlePrice = strikePrice_;
         
         // kill storage to refund gas
-        delete rounds[r].totalSupply;
         delete rounds[r].balances[address(_pool)];
 
         // increase r for new round
@@ -91,19 +92,12 @@ contract Option is Context, IOption {
         rounds.push();
         
         // setting new round parameters
+        _totalSupply = newSupply;
         rounds[r].expiryDate = block.timestamp + _duration;
-        rounds[r].totalSupply = newSupply;
         rounds[r].balances[address(_pool)] = newSupply;
         
         // set currentRound for readability
         currentRound = r;
-    }
-
-    /**
-     * @dev get total supply from round r
-     */
-    function getRoundTotalSupply(uint r) external override view returns(uint256) {
-        return rounds[r].totalSupply;
     }
     
     /**
@@ -282,7 +276,7 @@ contract Option is Context, IOption {
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view override returns (uint256) {
-        return rounds[currentRound].totalSupply;
+        return _totalSupply;
     }
 
     /**
@@ -419,7 +413,7 @@ contract Option is Context, IOption {
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        rounds[currentRound].totalSupply = rounds[currentRound].totalSupply.add(amount);
+        _totalSupply = _totalSupply.add(amount);
         rounds[currentRound].balances[account] = rounds[currentRound].balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
@@ -440,7 +434,7 @@ contract Option is Context, IOption {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        rounds[currentRound].totalSupply = rounds[currentRound].totalSupply.sub(amount);
+        _totalSupply = _totalSupply.sub(amount);
         rounds[currentRound].balances[account] = rounds[currentRound].balances[account].sub(amount, "ERC20: burn amount exceeds balance");
         emit Transfer(account, address(0), amount);
     }

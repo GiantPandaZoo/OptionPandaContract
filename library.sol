@@ -574,7 +574,6 @@ interface IOption is IERC20 {
     function resetOption(uint strikePrice_, uint newSupply) external;
     function name() external view returns (string memory);
     // previous rounds
-    function getRoundTotalSupply(uint r) external view returns(uint256);
     function getRoundExpiryDate(uint r) external view returns(uint);
     function getRoundStrikePrice(uint r) external view returns(uint);
     function getRoundSettlePrice(uint r) external view returns(uint);
