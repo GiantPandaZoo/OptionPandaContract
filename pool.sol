@@ -529,6 +529,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         if (needKills > entropy.length) {
             needKills = entropy.length;
         }
+        
+        // maximum 50% refund;
+        needKills /= 2;
 
         // refund gas via STORAGEKILL for any caller
         for (uint i = 0;i<needKills;i++) {
