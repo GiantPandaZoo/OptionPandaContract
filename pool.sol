@@ -524,7 +524,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
         
         // compute gas used until now;
-        uint needKills = (startGas - gasleft()) / 15000;
+        // gas usage +STORAGEMOD -STORAGEKILL = -10000
+        uint needKills = (startGas - gasleft()) / 10000;
                 
         // maximum 50% refund;
         needKills = needKills/2 + 1;
