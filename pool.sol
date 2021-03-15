@@ -155,10 +155,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * constructor will fail if the address is illegal.
      */
     // rinkeby
-    //IPandaFactory internal constant pandaFactory = IPandaFactory(0xC3454e6A1dAB4a14bD5f90a1458bE5eF8046b49C);
+    IPandaFactory internal constant pandaFactory = IPandaFactory(0x49C0b3Fb3B2964BC906334353E7DC4F455a07Ab6);
     
     // BSC
-    IPandaFactory internal constant pandaFactory = IPandaFactory(0x85A6C724b21a3150035c0A73C584bDC716E10Faa); 
+    //IPandaFactory internal constant pandaFactory = IPandaFactory(0x85A6C724b21a3150035c0A73C584bDC716E10Faa); 
     
     uint256 public collateral; // collaterals in this pool
     
@@ -179,10 +179,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 public utilizationRate = 50; // utilization rate of the pool in percent
     uint8 public maxUtilizationRate = 75; // max utilization rate of the pool in percent
     uint16 public sigma = 70; // current sigma
-    
+    uint256 public refreshPeriod = 3600; // system refresh period
+
     uint256 private _sigmaSoldOptions;  // sum total options sold in a period
     uint256 private _sigmaTotalOptions; // sum total options issued
-    uint256 private _nextHourlyUpdate = block.timestamp + 3600; // expected next hourly updating time;
+    uint256 private _nextRefresh = block.timestamp + refreshPeriod; // expected next refreshing time;
     
     // tracking pooler's collateral with
     // the token contract of the pooler;
@@ -459,7 +460,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice get next update time
      */
     function getNextUpdateTime() public override view returns (uint) {
-        uint nextUpdateTime =_nextHourlyUpdate;
+        uint nextUpdateTime =_nextRefresh;
         
         for (uint i = 0;i< _options.length;i++) {
             if (_options[i].expiryDate() < nextUpdateTime) {
@@ -468,6 +469,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
 
         return nextUpdateTime;
+    }
+    
+    /**
+     * @notice set refresh period
+     */
+    function setRefreshPeriod(uint period) external override {
+        require(period > 0, "postive");
+        refreshPeriod = period;
     }
 
     /**
@@ -509,13 +518,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             }
         }
 
-        // other hourly updates
-        if (block.timestamp > _nextHourlyUpdate) {
+        // other periodical refresh
+        if (block.timestamp > _nextRefresh) {
             updateSigma();
             updateOPAReward();
                     
-            // set next update time to one hour later
-            _nextHourlyUpdate += 3600;
+            // set next refresh time to one hour later
+            _nextRefresh += refreshPeriod;
         }
 
         // transfer manager's USDT premium at last

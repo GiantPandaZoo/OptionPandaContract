@@ -632,6 +632,7 @@ interface IOptionPool {
     function setPoolManager(address poolManager) external;
     function setUtilizationRate(uint8 rate) external;
     function setMaxUtilizationRate(uint8 maxrate) external;
+    function setRefreshPeriod(uint period) external;
     function getNextUpdateTime() external view returns (uint);
             
     /**
