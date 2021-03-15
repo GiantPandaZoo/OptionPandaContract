@@ -709,7 +709,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // premium balance modification
         uint amountUSDTPremium = _premiumBalance[msg.sender];
-        _premiumBalance[msg.sender] = 0; // zero premium balance
+        delete _premiumBalance[msg.sender]; // zero premium balance
         
         // transfer premium
         USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
@@ -740,7 +740,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // OPA balance modification
         uint amountOPA = _opaBalance[msg.sender];
-        _opaBalance[msg.sender] = 0; // zero OPA balance
+        delete _opaBalance[msg.sender]; // zero OPA balance
 
         // transfer OPA
         OPAToken.safeTransfer(msg.sender, amountOPA);
@@ -859,7 +859,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
         // load and clean profits
         uint256 accountProfits = _profitsBalance[msg.sender];
-        _profitsBalance[msg.sender] = 0;
+        delete _profitsBalance[msg.sender];
         
         // send profits
         _sendProfits(msg.sender, accountProfits);
