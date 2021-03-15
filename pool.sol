@@ -179,11 +179,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 public utilizationRate = 50; // utilization rate of the pool in percent
     uint8 public maxUtilizationRate = 75; // max utilization rate of the pool in percent
     uint16 public sigma = 70; // current sigma
-    uint256 public refreshPeriod = 3600; // system refresh period
-
+    
+    uint256 private _refreshPeriod = 3600; // system refresh period
     uint256 private _sigmaSoldOptions;  // sum total options sold in a period
     uint256 private _sigmaTotalOptions; // sum total options issued
-    uint256 private _nextRefresh = block.timestamp + refreshPeriod; // expected next refreshing time;
+    uint256 private _nextRefresh = block.timestamp + _refreshPeriod; // expected next refreshing time;
     
     // tracking pooler's collateral with
     // the token contract of the pooler;
@@ -476,7 +476,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function setRefreshPeriod(uint period) external override {
         require(period > 0, "postive");
-        refreshPeriod = period;
+        _refreshPeriod = period;
     }
 
     /**
@@ -524,7 +524,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             updateOPAReward();
                     
             // set next refresh time to one hour later
-            _nextRefresh += refreshPeriod;
+            _nextRefresh += _refreshPeriod;
         }
 
         // transfer manager's USDT premium at last
