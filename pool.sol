@@ -524,14 +524,15 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
         
         // compute gas used until now;
-        uint needKills = 1 + (startGas - gasleft()) / 15000;
+        uint needKills = (startGas - gasleft()) / 15000;
+                
+        // maximum 50% refund;
+        needKills = needKills/2 + 1;
         
+        // entropy limit
         if (needKills > entropy.length) {
             needKills = entropy.length;
         }
-        
-        // maximum 50% refund;
-        needKills /= 2;
 
         // refund gas via STORAGEKILL for any caller
         for (uint i = 0;i<needKills;i++) {
@@ -700,10 +701,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // transfer premium
         USDTContract.safeTransfer(msg.sender, amountUSDTPremium);
-        
-        // entropy
-        entropy.push(block.number);
-        
+
         // log
         emit PremiumClaim(msg.sender, amountUSDTPremium);
     }
@@ -731,10 +729,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // OPA balance modification
         uint amountOPA = _opaBalance[msg.sender];
         _opaBalance[msg.sender] = 0; // zero OPA balance
-        
-        // entropy
-        entropy.push(block.number);
-        
+
         // transfer OPA
         OPAToken.safeTransfer(msg.sender, amountOPA);
     }
@@ -856,10 +851,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // send profits
         _sendProfits(msg.sender, accountProfits);
-        
-        // entropy
-        entropy.push(block.number);
-        
+
         // log
         emit ProfitsClaim(msg.sender, accountProfits);
     }
