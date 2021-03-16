@@ -556,7 +556,20 @@ contract OptionPandaToken is ERC20, Pausable, Ownable {
         decimals = _decimals;
         _mint(_msgSender(), _initialSupply * (10 ** uint256(_decimals)));
     }
-
+    
+    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply.
+     *
+     * Emits a {Transfer} event with `from` set to the zero address.
+     *
+     * Requirements:
+     *
+     * - `to` cannot be the zero address.
+     */
+    function mint(address account, uint256 amount) public onlyOwner {
+        _mint(account, amount);
+        
+    }
     /**
      * @dev Destroys `amount` tokens from the caller.
      *
