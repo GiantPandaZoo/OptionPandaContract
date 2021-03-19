@@ -653,7 +653,7 @@ interface IOptionPool {
     /**
      * @dev Profits Claiming log
      */
-     event ProfitsClaim(address indexed account, uint amount);
+    event ProfitsClaim(address indexed account, uint amount);
      
     /**
      * @dev Profits Settle log
@@ -664,6 +664,11 @@ interface IOptionPool {
      * @dev Premium Claiming log
      */
     event PremiumClaim(address indexed account, uint amount);
+    
+    /**
+     * @dev OPA Claiming log
+     */
+    event OPAClaimed(address indexed account, uint amount);
      
     /**
      * @dev Premium Settle log

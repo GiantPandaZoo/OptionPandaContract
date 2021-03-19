@@ -619,7 +619,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         }
                 
         // accumulate OPA share
-       _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]);
+       _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]); 
        
         // next round setting                                 
         _currentOPARound++;
@@ -744,6 +744,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
 
         // transfer OPA
         OPAToken.safeTransfer(msg.sender, amountOPA);
+        
+        // log
+        emit OPAClaimed(msg.sender, amountOPA);
     }
 
     /**
