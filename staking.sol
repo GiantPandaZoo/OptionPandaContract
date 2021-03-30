@@ -128,11 +128,16 @@ contract Staking is Ownable {
      * @dev withdraw the staked assets
      */
     function withdraw(uint256 amount) external {
+        require(amount >= _balances[msg.sender], "balance exceeded");
+
         updateOPAReward();
 
-        require(amount >= _balances[msg.sender], "balance exceeded");
+        // modifiy
         _balances[msg.sender] -= amount;
         _totalSupply -= amount;
+        
+        // transfer assets back
+        AssetContract.safeTransfer(msg.sender, amount);
     }
 
     /**
@@ -175,20 +180,22 @@ contract Staking is Ownable {
             return;
         }
     
-        // settle OPA share for this round
-        uint roundOPAShare;
-        if (_totalSupply > 0) {
-            uint blocksToReward = block.number.sub(_lastRewardBlock);
-            uint mintedOPA = OPABlockReward.mul(blocksToReward);
-    
-            // OPA share
-            roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
-                                        .div(_totalSupply);
-                                    
-            // mark block rewarded;
-            _lastRewardBlock = block.number;
+        // postpone OPA rewarding if there is none staker
+        if (_totalSupply == 0) {
+            return;
         }
-                
+
+        // settle OPA share for [_lastRewardBlock, block.number]
+        uint blocksToReward = block.number.sub(_lastRewardBlock);
+        uint mintedOPA = OPABlockReward.mul(blocksToReward);
+
+        // OPA share
+        uint roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
+                                    .div(_totalSupply);
+                                
+        // mark block rewarded;
+        _lastRewardBlock = block.number;
+            
         // accumulate OPA share
        _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]); 
        
