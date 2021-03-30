@@ -207,6 +207,10 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // @dev last OPA reward block
     uint256 private _lastRewardBlock = block.number;
     
+    /**
+     * OPA Vesting
+     */
+    IVesting public VestingContract;
     
     /**
      * @dev settlement economy
@@ -730,7 +734,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         uint lastSettledOPARound = _settledOPARounds[account];
         
-        // poolers OPA reward := settledOPA + unsettledOPA + newMinedOPA
+        // poolers OPA reward = settledOPA + unsettledOPA + newMinedOPA
         uint unsettledOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
         uint newMinedOPAShare;
         if (poolerTotalSupply > 0) {
@@ -757,8 +761,11 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         uint amountOPA = _opaBalance[msg.sender];
         delete _opaBalance[msg.sender]; // zero OPA balance
 
-        // transfer OPA
-        OPAToken.safeTransfer(msg.sender, amountOPA);
+        // transfer OPA to vesting contract
+        OPAToken.safeTransfer(address(VestingContract), amountOPA);
+        
+        // vest the amount for the sender
+        VestingContract.vest(msg.sender, amountOPA);
         
         // log
         emit OPAClaimed(msg.sender, amountOPA);
@@ -931,15 +938,22 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice set pool manager
      */
-    function setPoolManager(address poolManager_) external override onlyOwner {
+    function setPoolManager(address poolManager_) external onlyOwner {
         poolManager = poolManager_;
     }
     
     /**
      * @notice set OPA token
      */
-    function setOPAToken(IERC20 OPAToken_) external override onlyOwner {
+    function setOPAToken(IERC20 OPAToken_) external onlyOwner {
         OPAToken = OPAToken_;
+    }
+    
+    /**
+     * @notice set Vesting contract
+     */
+    function setVestingContract(IVesting vestingContract_) external onlyOwner {
+        VestingContract = vestingContract_;
     }
     
     /**
