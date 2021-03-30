@@ -77,7 +77,9 @@ contract Staking is Ownable {
     IERC20 public AssetContract;
     IERC20 public OPAContract;
     
-    mapping (address => uint256) private _balances; 
+    mapping (address => uint256) private _balances; // tracking staker's value
+    mapping (address => uint256) internal _opaBalance; // tracking staker's claimable OPA tokens
+
     uint256 private _totalStaked;
 
     /**
@@ -105,7 +107,8 @@ contract Staking is Ownable {
      * @dev stake some assets
      */
     function stake(uint256 amount) external {
-        updateOPAReward();
+        // settle previous rewards
+        settleStaker(msg.sender);
         
         // transfer asset from AssetContract
         AssetContract.safeTransferFrom(msg.sender, address(this), amount);
@@ -117,9 +120,15 @@ contract Staking is Ownable {
      * @dev claim rewards only
      */
     function claimRewards() external {
-        updateOPAReward();
+        // settle previous rewards
+        settleStaker(msg.sender);
         
-        _claimRewardsInternal(msg.sender);
+        // OPA balance modification
+        uint amountOPA = _opaBalance[msg.sender];
+        delete _opaBalance[msg.sender]; // zero OPA balance
+
+        // transfer OPA to sender
+        OPAContract.safeTransfer(msg.sender, amountOPA);
     }
     
     /**
@@ -128,7 +137,8 @@ contract Staking is Ownable {
     function withdraw(uint256 amount) external {
         require(amount <= _balances[msg.sender], "balance exceeded");
 
-        updateOPAReward();
+        // settle previous rewards
+        settleStaker(msg.sender);
 
         // modifiy
         _balances[msg.sender] -= amount;
@@ -152,7 +162,7 @@ contract Staking is Ownable {
         uint accountCollateral = _balances[account];
         uint lastSettledOPARound = _settledOPARounds[account];
         
-        // OPA reward = unsettledOPA + newMinedOPA
+        // OPA reward = settledOPA + unsettledOPA + newMinedOPA
         uint unsettledOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
         uint newMinedOPAShare;
         
@@ -165,7 +175,7 @@ contract Staking is Ownable {
                                         .div(_totalStaked);
         }
         
-        return (unsettledOPA + newMinedOPAShare).mul(accountCollateral)
+        return _opaBalance[account] + (unsettledOPA + newMinedOPAShare).mul(accountCollateral)
                                             .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER;
     }
     
@@ -175,9 +185,33 @@ contract Staking is Ownable {
     function setOPAReward(uint256 amount) external onlyOwner {
         OPABlockReward = amount;
     }
+    
+    /**
+     * @dev settle a staker
+     */
+    function settleStaker(address account) internal {
+        // update OPA reward snapshot
+        updateOPAReward();
+        
+        // settle this account
+        uint accountCollateral = _balances[account];
+        uint lastSettledOPARound = _settledOPARounds[account];
+        uint newSettledOPARound = _currentOPARound - 1;
+        
+        // round OPA
+        uint roundOPA = _opaAccShares[newSettledOPARound].sub(_opaAccShares[lastSettledOPARound])
+                                .mul(accountCollateral)
+                                .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
+        
+        // update OPA balance
+        _opaBalance[account] += roundOPA;
+        
+        // mark new settled OPA round
+        _settledOPARounds[account] = newSettledOPARound;
+    }
      
      /**
-     * @dev update accumulated OPA block reward until block
+     * @dev update accumulated OPA block reward until current block
      */
     function updateOPAReward() internal {
         // skip round changing in the same block
@@ -206,26 +240,5 @@ contract Staking is Ownable {
        
         // next round setting                                 
         _currentOPARound++;
-    }
-    
-   /**
-     * @dev claim rewards internal
-     */
-    function _claimRewardsInternal(address account) internal {
-        // settle this account
-        uint accountCollateral = _balances[account];
-        uint lastSettledOPARound = _settledOPARounds[account];
-        uint newSettledOPARound = _currentOPARound - 1;
-        
-        // round OPA
-        uint roundOPA = _opaAccShares[newSettledOPARound].sub(_opaAccShares[lastSettledOPARound])
-                                .mul(accountCollateral)
-                                .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
-                                
-        // mark new settled OPA round
-        _settledOPARounds[account] = newSettledOPARound;
-        
-        // transfer to account
-        OPAContract.safeTransfer(account, roundOPA);
     }
 }
