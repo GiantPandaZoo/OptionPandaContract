@@ -68,6 +68,9 @@ contract Ownable is Context {
     }
 }
 
+/**
+ * @dev Option Panda Staking Contract for LP token & OPA token
+ */
 contract Staking is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
