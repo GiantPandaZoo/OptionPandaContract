@@ -96,10 +96,9 @@ contract Staking is Ownable {
     // @dev last OPA reward block
     uint256 private _lastRewardBlock = block.number;
     
-    constructor(IERC20 opaContract, IERC20 assetContract, address owner) public {
+    constructor(IERC20 opaContract, IERC20 assetContract) public {
         AssetContract = assetContract; 
         OPAContract = opaContract;
-        transferOwnership(owner);
     }
 
     /**
@@ -145,6 +144,13 @@ contract Staking is Ownable {
         
         // transfer assets back
         AssetContract.safeTransfer(msg.sender, amount);
+    }
+    
+    /**
+     * @dev return value staked for an account
+     */
+    function numStaked(address account) external view returns (uint256) {
+        return _balances[account];
     }
 
     /**
