@@ -74,17 +74,13 @@ contract Staking is Ownable {
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
     
-    IERC20 public AssetContract;
-    IERC20 public OPAContract;
+    IERC20 public AssetContract; // the asset to stake
+    IERC20 public OPAContract; // the OPA token contract
     
     mapping (address => uint256) private _balances; // tracking staker's value
     mapping (address => uint256) internal _opaBalance; // tracking staker's claimable OPA tokens
+    uint256 private _totalStaked; // track total staked value
 
-    uint256 private _totalStaked;
-
-    /**
-     * OPA Rewarding
-     */
     /// @dev initial block reward
     uint256 public OPABlockReward = 0;
 
@@ -164,8 +160,8 @@ contract Staking is Ownable {
         
         // OPA reward = settledOPA + unsettledOPA + newMinedOPA
         uint unsettledOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
-        uint newMinedOPAShare;
         
+        uint newMinedOPAShare;
         if (_totalStaked > 0) {
             uint blocksToReward = block.number.sub(_lastRewardBlock);
             uint mintedOPA = OPABlockReward.mul(blocksToReward);
@@ -182,8 +178,8 @@ contract Staking is Ownable {
     /**
      * @dev set OPA reward per height
      */
-    function setOPAReward(uint256 amount) external onlyOwner {
-        OPABlockReward = amount;
+    function setOPAReward(uint256 reward) external onlyOwner {
+        OPABlockReward = reward;
     }
     
     /**
@@ -236,7 +232,7 @@ contract Staking is Ownable {
         _lastRewardBlock = block.number;
             
         // accumulate OPA share
-       _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]); 
+        _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]); 
        
         // next round setting                                 
         _currentOPARound++;
