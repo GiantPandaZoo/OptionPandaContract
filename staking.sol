@@ -85,12 +85,12 @@ contract Staking is Ownable {
     /**
      * OPA Rewarding
      */
-    /// @dev initial block reward for this pool
+    /// @dev initial block reward
     uint256 public OPABlockReward = 0;
 
     /// @dev round index mapping to accumulate share.
     mapping (uint => uint) private _opaAccShares;
-    /// @dev mark pooler's highest settled OPA round.
+    /// @dev mark staker's highest settled OPA round.
     mapping (address => uint) private _settledOPARounds;
     /// @dev a monotonic increasing OPA round index, STARTS FROM 1
     uint256 private _currentOPARound = 1;
@@ -141,7 +141,7 @@ contract Staking is Ownable {
     }
 
     /**
-     * @notice poolers sum unclaimed OPA;
+     * @notice sum unclaimed OPA;
      */
     function checkReward(address account) external view returns(uint256 opa) {
         uint accountCollateral = _balances[account];
