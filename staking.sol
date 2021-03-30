@@ -128,7 +128,7 @@ contract Staking is Ownable {
      * @dev withdraw the staked assets
      */
     function withdraw(uint256 amount) external {
-        require(amount >= _balances[msg.sender], "balance exceeded");
+        require(amount <= _balances[msg.sender], "balance exceeded");
 
         updateOPAReward();
 
