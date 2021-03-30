@@ -80,7 +80,7 @@ contract Staking is Ownable {
     IERC20 public OPAContract;
     
     mapping (address => uint256) private _balances; 
-    uint256 private _totalSupply;
+    uint256 private _totalStaked;
 
     /**
      * OPA Rewarding
@@ -112,7 +112,7 @@ contract Staking is Ownable {
         // transfer asset from AssetContract
         AssetContract.safeTransferFrom(msg.sender, address(this), amount);
         _balances[msg.sender] += amount;
-        _totalSupply += amount;
+        _totalStaked += amount;
     }
     
     /**
@@ -134,12 +134,19 @@ contract Staking is Ownable {
 
         // modifiy
         _balances[msg.sender] -= amount;
-        _totalSupply -= amount;
+        _totalStaked -= amount;
         
         // transfer assets back
         AssetContract.safeTransfer(msg.sender, amount);
     }
 
+    /**
+     * @dev return total staked value
+     */
+    function totalStaked() public view returns (uint256) {
+        return _totalStaked;
+    }
+    
     /**
      * @notice sum unclaimed OPA;
      */
@@ -151,13 +158,13 @@ contract Staking is Ownable {
         uint unsettledOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
         uint newMinedOPAShare;
         
-        if (_totalSupply > 0) {
+        if (_totalStaked > 0) {
             uint blocksToReward = block.number.sub(_lastRewardBlock);
             uint mintedOPA = OPABlockReward.mul(blocksToReward);
     
             // OPA share
             newMinedOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
-                                        .div(_totalSupply);
+                                        .div(_totalStaked);
         }
         
         return (unsettledOPA + newMinedOPAShare).mul(accountCollateral)
@@ -181,7 +188,7 @@ contract Staking is Ownable {
         }
     
         // postpone OPA rewarding if there is none staker
-        if (_totalSupply == 0) {
+        if (_totalStaked == 0) {
             return;
         }
 
@@ -191,7 +198,7 @@ contract Staking is Ownable {
 
         // OPA share
         uint roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
-                                    .div(_totalSupply);
+                                    .div(_totalStaked);
                                 
         // mark block rewarded;
         _lastRewardBlock = block.number;
