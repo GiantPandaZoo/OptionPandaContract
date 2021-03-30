@@ -73,9 +73,7 @@ contract Staking is Ownable {
     using SafeMath for uint;
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
-
-    address internal _owner; // owner of this contract
-
+    
     IERC20 public AssetContract;
     IERC20 public OPAContract;
     
@@ -100,7 +98,7 @@ contract Staking is Ownable {
     constructor(IERC20 opaContract, IERC20 assetContract, address owner) public {
         AssetContract = assetContract; 
         OPAContract = opaContract;
-        _owner = owner;
+        transferOwnership(owner);
     }
 
     /**
