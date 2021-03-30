@@ -143,7 +143,7 @@ contract Staking is Ownable {
     /**
      * @dev return total staked value
      */
-    function totalStaked() public view returns (uint256) {
+    function totalStaked() external view returns (uint256) {
         return _totalStaked;
     }
     
