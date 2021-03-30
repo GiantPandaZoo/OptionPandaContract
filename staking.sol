@@ -182,6 +182,9 @@ contract Staking is Ownable {
      * @dev set OPA reward per height
      */
     function setOPAReward(uint256 reward) external onlyOwner {
+        // settle previous rewards
+        updateOPAReward();
+        // set new block reward
         OPABlockReward = reward;
     }
     

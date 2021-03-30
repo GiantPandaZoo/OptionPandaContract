@@ -387,6 +387,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @dev set OPA reward per height
      */
     function setOPAReward(uint256 amount) external onlyOwner {
+        // settle previous rewards
+        updateOPAReward();
+        // set new block reward
         OPABlockReward = amount;
     }
     
