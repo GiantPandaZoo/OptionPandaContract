@@ -521,7 +521,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // other periodical refresh
         if (block.timestamp > _nextRefresh) {
             updateSigma();
-            updateOPAReward();
                     
             // set next refresh time to one hour later
             _nextRefresh += _refreshPeriod;
@@ -599,9 +598,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
     
     /**
-     * @dev update OPA reward
+     * @dev update accumulated OPA block reward until block
      */
     function updateOPAReward() internal {
+        // skip round changing in the same block
+        if (_lastRewardBlock == block.number) {
+            return;
+        }
+        
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
 
         // settle OPA share for this round
@@ -722,13 +726,24 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice poolers sum unclaimed OPA;
      */
     function checkOPA(address account) external override view returns(uint256 opa) {
+        uint poolerTotalSupply = poolerTokenContract.totalSupply();
         uint accountCollateral = poolerTokenContract.balanceOf(account);
         uint lastSettledOPARound = _settledOPARounds[account];
-        uint roundOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound])
-                                .mul(accountCollateral)
-                                .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER    
-                                
-        return _opaBalance[account] + roundOPA;
+        
+        // poolers OPA reward := settledOPA + unsettledOPA + newMinedOPA
+        uint unsettledOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
+        uint newMinedOPAShare;
+        if (poolerTotalSupply > 0) {
+            uint blocksToReward = block.number.sub(_lastRewardBlock);
+            uint mintedOPA = OPABlockReward.mul(blocksToReward);
+    
+            // OPA share per pooler token
+            newMinedOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
+                                        .div(poolerTotalSupply);
+        }
+        
+        return _opaBalance[account] + (unsettledOPA + newMinedOPAShare).mul(accountCollateral)
+                                            .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER;
     }
     
     /**
@@ -790,8 +805,12 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // set back balance to storage
         _premiumBalance[account] = premiumBalance;
         
-        // OPA settlement
+        // OPA settlement for each pooler token balance change
         {
+            // update OPA reward snapshot
+            updateOPAReward();
+            
+            // settle this account
             uint lastSettledOPARound = _settledOPARounds[account];
             uint newSettledOPARound = _currentOPARound - 1;
             
