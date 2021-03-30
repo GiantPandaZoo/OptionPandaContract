@@ -612,22 +612,22 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
 
-        // settle OPA share for this round
-        uint roundOPAShare;
-        if (poolerTotalSupply > 0) {
-            uint blocksToReward = block.number.sub(_lastRewardBlock);
-            uint mintedOPA = OPABlockReward.mul(blocksToReward);
-    
-            // OPA share per pooler token
-            roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
-                                        .div(poolerTotalSupply);
-                                    
-            // mark block rewarded;
-            _lastRewardBlock = block.number;
+        // postpone OPA rewarding if there is none pooler
+        if (poolerTotalSupply == 0) {
+            return;
         }
+        
+        // settle OPA share for [_lastRewardBlock, block.number]
+        uint blocksToReward = block.number.sub(_lastRewardBlock);
+        uint mintedOPA = OPABlockReward.mul(blocksToReward);
+        uint roundOPAShare = mintedOPA.mul(SHARE_MULTIPLIER)
+                                    .div(poolerTotalSupply);
+                                
+        // mark block rewarded;
+        _lastRewardBlock = block.number;
                 
         // accumulate OPA share
-       _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]); 
+        _opaAccShares[_currentOPARound] = roundOPAShare.add(_opaAccShares[_currentOPARound-1]); 
        
         // next round setting                                 
         _currentOPARound++;
