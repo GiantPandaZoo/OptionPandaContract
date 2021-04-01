@@ -168,7 +168,7 @@ contract Staking is Ownable {
         uint lastSettledOPARound = _settledOPARounds[account];
         
         // OPA reward = settledOPA + unsettledOPA + newMinedOPA
-        uint unsettledOPA = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
+        uint unsettledOPAShare = _opaAccShares[_currentOPARound-1].sub(_opaAccShares[lastSettledOPARound]);
         
         uint newMinedOPAShare;
         if (_totalStaked > 0) {
@@ -180,7 +180,7 @@ contract Staking is Ownable {
                                         .div(_totalStaked);
         }
         
-        return _opaBalance[account] + (unsettledOPA + newMinedOPAShare).mul(accountCollateral)
+        return _opaBalance[account] + (unsettledOPAShare + newMinedOPAShare).mul(accountCollateral)
                                             .div(SHARE_MULTIPLIER);  // remember to div by SHARE_MULTIPLIER;
     }
     
