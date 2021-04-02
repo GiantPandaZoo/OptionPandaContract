@@ -345,7 +345,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused {
         // check if option current round is the given round, we cannot buy previous rounds
-        require (optionContract.getRound() == round, "mismatch");
+        require (optionContract.getRound() == round, "expired");
         // cap amount to remaing options
         if (optionContract.balanceOf(address(this)) < amount) {
             amount = optionContract.balanceOf(address(this));
