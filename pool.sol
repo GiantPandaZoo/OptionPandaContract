@@ -258,16 +258,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         require(isFromOption);
         _;
     }
-    
-    /**
-     * @dev buyers try to update
-     */
-    modifier tryUpdate() {
-        if (block.timestamp > getNextUpdateTime()) {
-            update();
-        }
-        _;
-    }
 
     /**
      * @dev abstract function for current option supply per slot
@@ -353,7 +343,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * @notice buy options via USDT, pool receive premium
      */
-    function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused tryUpdate {
+    function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused {
         // check option expiry
         require(block.timestamp < optionContract.expiryDate(), "expired");
         // check if option current round is the given round
@@ -372,15 +362,26 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         
         // credit premium to option contract
         optionContract.addPremium(msg.sender, premium);
+                
+        // log
+        emit Buy(msg.sender, address(optionContract), round, amount, premium);
         
+        // entropy storage to refund to update() caller
+        entropy.push(block.number);
+        
+        // OPTION PARAMETERS MAINTENANCE
         // sigma: count sold options
         _sigmaSoldOptions = _sigmaSoldOptions.add(amount);
         
-        // entropy
-        entropy.push(block.number);
-        
-        // log
-        emit Buy(msg.sender, address(optionContract), round, amount, premium);
+        // other periodical refresh
+        if (block.timestamp > _nextRefresh) {
+            updateSigma();
+        }
+         
+        // open new round, one caller will get refund for an effective update
+        if (block.timestamp > getNextUpdateTime()) {
+            update();
+        }
     }
     
     /**
@@ -523,14 +524,6 @@ abstract contract PandaBase is IOptionPool, PausablePool{
                 // sigma: count newly issued options
                 _sigmaTotalOptions = _sigmaTotalOptions.add(slotSupply);
             }
-        }
-
-        // other periodical refresh
-        if (block.timestamp > _nextRefresh) {
-            updateSigma();
-                    
-            // set next refresh time to one hour later
-            _nextRefresh += _refreshPeriod;
         }
 
         // transfer manager's USDT premium at last
@@ -676,6 +669,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // set back to contract storage
         _sigmaTotalOptions = sigmaTotalOptions;
         _sigmaSoldOptions = sigmaSoldOptions;
+        
+        // set next refresh time to at least one hour later
+        _nextRefresh += _refreshPeriod;
     }
     
     /**
