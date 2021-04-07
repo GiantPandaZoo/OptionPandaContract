@@ -499,13 +499,17 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         // create a memory copy of array
         IOption [] memory options = _options;
         
-        // accumulated manager's revenue
+        // accumulated manager's USDT revenue
         uint256 accManagerRevenue;
+        uint256 accManagerAssetRevenue;
+
         
         // settle all options
         for (uint i = 0;i< options.length;i++) {
             if (block.timestamp >= options[i].expiryDate()) { // expired
-                accManagerRevenue += _settleOption(options[i], assetPrice);
+                (uint256 premium, uint256 asset) = _settleOption(options[i], assetPrice);
+                accManagerRevenue += premium;
+                accManagerAssetRevenue += asset;
             } else { // mark unexpired by clearning 0
                 options[i] = IOption(0);
             }
@@ -526,9 +530,14 @@ abstract contract PandaBase is IOptionPool, PausablePool{
             }
         }
 
-        // transfer manager's USDT premium at last
+        // transfer manager's USDT premium
         if (accManagerRevenue > 0) {
             USDTContract.safeTransfer(poolManager, accManagerRevenue);
+        }
+        
+        // transfer manager's asset revenue
+        if (accManagerAssetRevenue > 0) {
+            _sendProfits(payable(poolManager), accManagerAssetRevenue);
         }
         
         // compute gas used until now;
@@ -557,22 +566,24 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      *  accmulated premiumShare * (pooler token) 
      *  is the share for one pooler.
      */
-    function _settleOption(IOption option, uint settlePrice) internal returns (uint256 managerRevenue) {
+    function _settleOption(IOption option, uint settlePrice) internal returns (uint256 managerRevenue, uint256 managerAssetRevenue) {
         uint totalSupply = option.totalSupply();
         uint strikePrice = option.strikePrice();
         
         // count total sold options
         uint totalOptionSold = totalSupply.sub(option.balanceOf(address(this)));
         
-        // calculate total profits
+        // calculate user's total profits, ALREADY MULTIPLIED WITH 99%
         uint totalProfits = _calcProfits(settlePrice, strikePrice, totalOptionSold);
 
         // substract collateral
         // buyer's profits is pooler's loss
         if (totalProfits > 0) {
-            collateral = collateral.sub(totalProfits);
+            // 1% profits belongs to manager
+            managerAssetRevenue = totalProfits.div(99);
+            collateral = collateral.sub(totalProfits).sub(managerAssetRevenue);
         }
-
+        
         // settle preimum dividends
         uint poolerTotalSupply = poolerTokenContract.totalSupply();
         uint totalPremiums = option.totalPremiums();
@@ -1069,7 +1080,7 @@ contract NativeCallOptionPool is PandaBase {
             uint holderETHProfit = ratio.mul(optionAmount)
                                         .div(1e12);         // remember to div by 1e12 previous mul-ed
             
-            return holderETHProfit;
+            return holderETHProfit.mul(99).div(100);
         }
     }
 
@@ -1181,7 +1192,7 @@ contract ERC20CallOptionPool is PandaBase {
             uint holderAssetProfit = ratio.mul(optionAmount)
                                     .div(1e12);         // remember to div by 1e12 previous mul-ed
             
-            return holderAssetProfit;
+            return holderAssetProfit.mul(99).div(100);
         }
     }
 
@@ -1299,7 +1310,7 @@ contract PutOptionPool is PandaBase {
                                     .div(1e12)                  // remember to div 1e12 previous multipied
                                     .div(assetPriceUnit);       // remember to div price unit
 
-            return holderUSDTProfit;
+            return holderUSDTProfit.mul(99).div(100);
         }
     }
 
