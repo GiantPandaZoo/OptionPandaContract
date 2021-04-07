@@ -163,6 +163,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint256 public collateral; // collaterals in this pool
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
+    
+    uint256 public constant POOLER_FEE = 5e15; // charge 0.005 BNB for each deposit and withdraw
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -188,7 +190,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // tracking pooler's collateral with
     // the token contract of the pooler;
     IPoolerToken public poolerTokenContract;
-    address public poolManager;     // platform contract
+    address public poolManager; // platform contract
+    address payable public updaterAddress;     // updater address
     
     IERC20 public OPAToken;  // OPA token contract
 
@@ -953,6 +956,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     }
     
     /**
+     * @notice set updater address
+     */
+    function setUpdater(address payable updater_) external onlyOwner {
+        updaterAddress = updater_;
+    }
+    
+    /**
      * @notice set OPA token
      */
     function setOPAToken(IERC20 OPAToken_) external onlyOwner {
@@ -1029,20 +1039,26 @@ contract NativeCallOptionPool is PandaBase {
      * @notice deposit ethers to this pool directly.
      */
     function deposit() external whenPoolerNotPaused payable {
-        require(msg.value > 0, "0 value");
-        poolerTokenContract.mint(msg.sender, msg.value);
-        collateral = collateral.add(msg.value);
+        require(msg.value > POOLER_FEE, "0 value");
+        uint256 value = msg.value.sub(POOLER_FEE);
+        
+        poolerTokenContract.mint(msg.sender, value);
+        collateral = collateral.add(value);
         
         // log
-        emit Deposit(msg.sender, msg.value);
+        emit Deposit(msg.sender, value);
+        
+        // transfer POOLER_FEE to updaterAddress
+        updaterAddress.sendValue(POOLER_FEE);
     }
     
     /**
      * @notice withdraw the pooled ethers;
      */
-    function withdraw(uint amount) external whenPoolerNotPaused {
+    function withdraw(uint amount) external whenPoolerNotPaused payable {
         require (amount <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
         require (amount <= NWA(), "collateral exceeded");
+        require(msg.value >= POOLER_FEE, "0 fee");
 
         // burn pooler token
         poolerTokenContract.burn(msg.sender, amount);
@@ -1054,6 +1070,9 @@ contract NativeCallOptionPool is PandaBase {
         
         // log 
         emit Withdraw(msg.sender, amount);
+                
+        // transfer POOLER_FEE to updaterAddress
+        updaterAddress.sendValue(msg.value);
     }
         
     /**
@@ -1132,8 +1151,13 @@ contract ERC20CallOptionPool is PandaBase {
     /**
      * @notice deposit asset to this pool directly.
      */
-    function depositAsset(uint256 amountAsset) external whenPoolerNotPaused {
+    function depositAsset(uint256 amountAsset) external whenPoolerNotPaused payable {
         require(amountAsset > 0, "0 value");
+        require(msg.value >= POOLER_FEE, "0 fee");
+
+        // transfer POOLER_FEE to updaterAddress
+        updaterAddress.sendValue(msg.value);
+        
         assetContract.safeTransferFrom(msg.sender, address(this), amountAsset);
         poolerTokenContract.mint(msg.sender, amountAsset);
         collateral = collateral.add(amountAsset);
@@ -1145,10 +1169,14 @@ contract ERC20CallOptionPool is PandaBase {
     /**
      * @notice withdraw the pooled ethers;
      */
-    function withdrawAsset(uint amountAsset) external whenPoolerNotPaused {
+    function withdrawAsset(uint amountAsset) external whenPoolerNotPaused payable {
         require (amountAsset <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
         require (amountAsset <= NWA(), "collateral exceeded");
+        require(msg.value >= POOLER_FEE, "0 fee");
 
+        // transfer POOLER_FEE to updaterAddress
+        updaterAddress.sendValue(msg.value);
+        
         // burn pooler token
         poolerTokenContract.burn(msg.sender, amountAsset);
         // substract collateral
@@ -1239,8 +1267,13 @@ contract PutOptionPool is PandaBase {
      * to approve() to this contract address first,
      * and call with the given amount.
      */
-    function depositUSDT(uint256 amountUSDT) external whenPoolerNotPaused {
+    function depositUSDT(uint256 amountUSDT) external whenPoolerNotPaused payable {
         require(amountUSDT > 0, "0 value");
+        require(msg.value >= POOLER_FEE, "0 fee");
+
+        // transfer POOLER_FEE to updaterAddress
+        updaterAddress.sendValue(msg.value);
+        
         USDTContract.safeTransferFrom(msg.sender, address(this), amountUSDT);
         poolerTokenContract.mint(msg.sender, amountUSDT);
         collateral = collateral.add(amountUSDT);
@@ -1252,10 +1285,14 @@ contract PutOptionPool is PandaBase {
     /**
      * @notice withdraw the pooled USDT;
      */
-    function withdrawUSDT(uint amountUSDT) external whenPoolerNotPaused {
+    function withdrawUSDT(uint amountUSDT) external whenPoolerNotPaused payable {
         require (amountUSDT <= poolerTokenContract.balanceOf(msg.sender), "balance exceeded");
         require (amountUSDT <= NWA(), "collateral exceeded");
+        require (msg.value >= POOLER_FEE, "0 fee");
 
+        // transfer POOLER_FEE to updaterAddress
+        updaterAddress.sendValue(msg.value);
+        
         // burn pooler token
         poolerTokenContract.burn(msg.sender, amountUSDT);
         // substract collateral
