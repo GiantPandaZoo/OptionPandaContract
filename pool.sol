@@ -194,6 +194,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     address payable public updaterAddress;     // updater address
     
     IERC20 public OPAToken;  // OPA token contract
+    address public rewardAccount; // OPA reward account
 
     /**
      * OPA Rewarding
@@ -775,7 +776,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         delete _opaBalance[msg.sender]; // zero OPA balance
 
         // transfer OPA to vesting contract
-        OPAToken.safeTransfer(address(VestingContract), amountOPA);
+        OPAToken.safeTransferFrom(rewardAccount, address(VestingContract), amountOPA);
         
         // vest the amount for the sender
         VestingContract.vest(msg.sender, amountOPA);
@@ -967,6 +968,13 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      */
     function setOPAToken(IERC20 OPAToken_) external onlyOwner {
         OPAToken = OPAToken_;
+    }
+    
+    /**
+     * @notice set OPA transfer account
+     */
+    function setOPARewardAccount(address rewardAccount_) external onlyOwner {
+        rewardAccount = rewardAccount_;
     }
     
     /**

@@ -79,7 +79,8 @@ contract Staking is Ownable {
     
     IERC20 public AssetContract; // the asset to stake
     IERC20 public OPAContract; // the OPA token contract
-    
+    address public rewardAccount; // OPA reward account
+
     mapping (address => uint256) private _balances; // tracking staker's value
     mapping (address => uint256) internal _opaBalance; // tracking staker's claimable OPA tokens
     uint256 private _totalStaked; // track total staked value
@@ -99,6 +100,13 @@ contract Staking is Ownable {
     constructor(IERC20 opaContract, IERC20 assetContract) public {
         AssetContract = assetContract; 
         OPAContract = opaContract;
+    }
+    
+    /**
+     * @notice set OPA transfer account
+     */
+    function setOPARewardAccount(address rewardAccount_) external onlyOwner {
+        rewardAccount = rewardAccount_;
     }
 
     /**
@@ -126,7 +134,7 @@ contract Staking is Ownable {
         delete _opaBalance[msg.sender]; // zero OPA balance
 
         // transfer OPA to sender
-        OPAContract.safeTransfer(msg.sender, amountOPA);
+        OPAContract.safeTransferFrom(rewardAccount, msg.sender, amountOPA);
     }
     
     /**
