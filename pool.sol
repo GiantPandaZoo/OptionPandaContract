@@ -350,6 +350,16 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice buy options via USDT, pool receive premium
      */
     function buy(uint amount, IOption optionContract, uint round) external override whenBuyerNotPaused {
+        // make sure optionContract is in this pool
+        bool optionValid;
+        for (uint i = 0;i< _options.length;i++) {
+            if (_options[i] == optionContract) {
+                optionValid = true;
+                break;
+            }
+        }
+        require(optionValid,"option invalid");
+         
         // check if option current round is the given round, we cannot buy previous rounds
         require (optionContract.getRound() == round, "expired");
         // cap amount to remaing options
