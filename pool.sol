@@ -211,6 +211,8 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     // @dev last OPA reward block
     uint256 private _lastRewardBlock = block.number;
     
+    event OPARewardSet(address account, uint256 blockReward);
+    
     /**
      * OPA Vesting
      */
@@ -396,6 +398,9 @@ abstract contract PandaBase is IOptionPool, PausablePool{
         updateOPAReward();
         // set new block reward
         OPABlockReward = reward;
+        
+        // log
+        emit OPARewardSet(msg.sender, reward);
     }
     
     /**
