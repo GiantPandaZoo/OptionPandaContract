@@ -213,7 +213,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     /**
      * OPA Vesting
      */
-    IVesting public VestingContract;
+    IVesting public VestingContract = IVesting(0xe135C31Fc21A4962eA5000AC295885bcfd635293);
     
     /**
      * @dev settlement economy
