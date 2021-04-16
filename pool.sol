@@ -197,7 +197,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * OPA Rewarding
      */
     /// @dev block reward for this pool
-    uint256 public OPABlockReward = 10 * 1e18; 
+    uint256 public OPABlockReward = 0;
 
     /// @dev round index mapping to accumulate share.
     mapping (uint => uint) private _opaAccShares;
