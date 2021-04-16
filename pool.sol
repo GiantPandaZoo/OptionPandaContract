@@ -191,7 +191,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     address payable public updaterAddress;     // updater address
     
     IERC20 public OPAToken;  // OPA token contract
-    address public rewardAccount; // OPA reward account
+    address public rewardAccount = 0x38A09Ec80aA2c5fc6E92a65E98a4e43e4dAb53b4; // OPA reward account
 
     /**
      * OPA Rewarding
