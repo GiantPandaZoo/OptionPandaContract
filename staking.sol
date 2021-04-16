@@ -79,7 +79,7 @@ contract Staking is Ownable {
     
     IERC20 public AssetContract; // the asset to stake
     IERC20 public OPAContract; // the OPA token contract
-    address public rewardAccount; // OPA reward account
+    address public rewardAccount = 0x38A09Ec80aA2c5fc6E92a65E98a4e43e4dAb53b4; // OPA reward account
 
     mapping (address => uint256) private _balances; // tracking staker's value
     mapping (address => uint256) internal _opaBalance; // tracking staker's claimable OPA tokens
