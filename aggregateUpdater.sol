@@ -23,11 +23,27 @@ contract AggregateUpdater {
     function getNextUpdateTime() external view returns (uint) {
         uint nextUpdateTime = block.timestamp + 3600;
         for (uint i=0;i<pools.length;i++) {
-            if (pools[i].getNextUpdateTime() < nextUpdateTime) {
-                nextUpdateTime = pools[i].getNextUpdateTime();
+            uint poolUpdateTime = getPoolUpdateTime(pools[i]);
+            if (poolUpdateTime < nextUpdateTime) {
+                nextUpdateTime = poolUpdateTime;
             }
         }
         return nextUpdateTime;
+    }
+    
+    /**
+     * @dev get pool update time
+     */
+    function getPoolUpdateTime(IOptionPool pool) internal view returns (uint) {
+        uint nextRoundTime = block.timestamp + 3600;
+        IOption []memory options = pool.listOptions();
+        for (uint i=0;i<options.length;i++){
+            uint optionUpdateTime = options[i].expiryDate();
+            if (optionUpdateTime < nextRoundTime) {
+                nextRoundTime = optionUpdateTime;
+            }
+        }
+        return nextRoundTime;
     }
     
     /**
