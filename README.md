@@ -30,3 +30,22 @@ Option Panda adopts an auction-like option offering mechanism. Every cycle, afte
 Option Panda automatically settles expiring options and updates new option offerings according to transparent rules. Option holders don't have to tower-watch and manually exercise their holdings through smart contract interaction. 
 
 All the above feature are running on Ethereum smart contract. Try it out!
+
+
+## Contract Deployments On BSC
+
+* CDF: 0x15fae9fAA97606cEB9701ea363E20CC72d32fE94
+* Factory: 0xddE5b0c676d6A94540F5A2A91C7a5b75eaCBBEe0
+* OPA Token: 0xA2F89a3be1bAda5Eb9D58D23EDc2E2FE0F82F4b0
+* AggregateUpdater:0xbD55090FfA63BcE2C07516FDE1BBfe93361D1e91
+
+| Pool | Address |
+|------|------|
+|BNB/USDT Call| 0x2D8a65606F7F9D08d532e1079ba57B1aF7acAB9e|
+|BNB/USDT Put| 0xd7BdA2C32C3f82663a75e1AeAE1Cb9D6bE6d5119|
+|BTCB/USDT Call|0xD9D31e22090A56aaD6491462Cb1E27E99c351Cf9|
+|BTCB/USDT Put|0x1B5510B9bc81f596D9F61f9D0b19bBBB1DF7e868|
+|ETH/USDT Call|0x698FE8e4421a9Ed2B0a0F0b0aD456Ea55202a055|
+|ETH/USDT Put|0xaAdCCAf9FF0546A37e46C7e4A7c245Fd4a554a49|
+
+
