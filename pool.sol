@@ -161,7 +161,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     
     uint256 internal constant SHARE_MULTIPLIER = 1e18; // share multiplier to avert division underflow
     
-    uint256 public constant POOLER_FEE = 5e15; // charge 0.005 BNB for each deposit and withdraw
+    uint256 public constant POOLER_FEE = 5e16; // charge 0.05 BNB for each deposit and withdraw
 
     mapping (address => uint256) internal _premiumBalance; // tracking pooler's claimable premium
     mapping (address => uint256) internal _opaBalance; // tracking pooler's claimable OPA tokens
@@ -179,7 +179,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
     uint8 public maxUtilizationRate = 75; // max utilization rate of the pool in percent
     uint16 public sigma = 70; // current sigma
     
-    uint256 private _refreshPeriod = 3600; // system refresh period
+    uint256 private _refreshPeriod = 3600; // sigma refresh period
     uint256 private _sigmaSoldOptions;  // sum total options sold in a period
     uint256 private _sigmaTotalOptions; // sum total options issued
     uint256 private _nextRefresh = block.timestamp + _refreshPeriod; // expected next refreshing time;
@@ -484,7 +484,7 @@ abstract contract PandaBase is IOptionPool, PausablePool{
      * @notice get next update time
      */
     function getNextUpdateTime() public override view returns (uint) {
-        uint nextUpdateTime =_nextRefresh;
+        uint nextUpdateTime = block.timestamp.add(1 days);
         
         for (uint i = 0;i< _options.length;i++) {
             if (_options[i].expiryDate() < nextUpdateTime) {
