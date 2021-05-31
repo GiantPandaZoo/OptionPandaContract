@@ -632,6 +632,7 @@ interface IOptionPool {
     function setMaxUtilizationRate(uint8 maxrate) external;
     function setRefreshPeriod(uint period) external;
     function getNextUpdateTime() external view returns (uint);
+    function setOPAReward(uint256 reward) external;
             
     /**
      * @dev deposit event
